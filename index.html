@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyMate - AI-Powered Study System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="frontend/style.css">
+    <link rel="stylesheet" href="frontend/ai-quiz.css">
+</head>
+<body>
+
+    <!-- ========== AUTH SECTION ========== -->
+    <div id="authSection" class="auth-container">
+        <div class="auth-card-wrapper">
+            <div class="auth-card">
+                <div class="text-center mb-4">
+                    <a href="homepage.html" class="text-decoration-none text-muted" style="font-size: 0.9rem; display: inline-block; margin-bottom: 1rem;">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </a>
+                    <div class="auth-logo"><i class="fas fa-graduation-cap"></i></div>
+                    <h1 class="auth-title">StudyMate</h1>
+                    <p class="auth-subtitle">AI-Powered Study Recommendation System</p>
+                </div>
+                <!-- Login Form -->
+                <div id="loginForm">
+                    <h5 class="form-heading">Welcome Back</h5>
+                    <form id="loginFormElement">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="loginEmail" placeholder="your@email.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+                        <p class="text-center auth-switch">New user? <a href="#" onclick="toggleAuthForm()">Register</a></p>
+                    </form>
+                </div>
+                <!-- Register Form -->
+                <div id="registerForm" style="display: none;">
+                    <h5 class="form-heading">Create Account</h5>
+                    <form id="registerFormElement">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="registerName" placeholder="Your Name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="registerEmail" placeholder="your@email.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="registerPassword" placeholder="Strong password" required oninput="updatePasswordStrength(this.value)">
+                            <div class="password-strength mt-2" id="passwordStrengthContainer" style="display:none;">
+                                <div class="strength-bar-bg"><div class="strength-bar-fill" id="strengthBar"></div></div>
+                                <small id="strengthText" class="strength-text"></small>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mb-3">Register</button>
+                        <p class="text-center auth-switch">Already have account? <a href="#" onclick="toggleAuthForm()">Login</a></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== DASHBOARD SECTION ========== -->
+    <div id="dashboardSection" style="display: none;" class="dashboard-wrapper">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>StudyMate</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="homepage.html" class="sidebar-link" id="backToHomeLink">
+                    <i class="fas fa-home"></i><span>Back to Home</span>
+                </a>
+                <a href="#" class="sidebar-link active" data-page="dashboard">
+                    <i class="fas fa-th-large"></i><span>Dashboard</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="sessions">
+                    <i class="fas fa-book-open"></i><span>Sessions</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="recommendations">
+                    <i class="fas fa-lightbulb"></i><span>Tips to Know</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="progress">
+                    <i class="fas fa-chart-line"></i><span>Progress</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="schedule">
+                    <i class="fas fa-calendar-alt"></i><span>Schedule</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="timer">
+                    <i class="fas fa-stopwatch"></i><span>Study Timer</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="guide">
+                    <i class="fas fa-question-circle"></i><span>Help & Guide</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="routine">
+                    <i class="fas fa-user-clock"></i><span>My Routine</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="journal">
+                    <i class="fas fa-book-open"></i><span>My Journal</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="aitutor">
+                    <i class="fas fa-robot"></i><span>AI Tutor</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="aboutus">
+                    <i class="fas fa-users"></i><span>About Us</span>
+                </a>
+                <a href="#" class="sidebar-link" data-page="settings">
+                    <i class="fas fa-cog"></i><span>Settings</span>
+                </a>
+                <a href="#" class="sidebar-link" onclick="toggleDarkMode(); return false;">
+                    <i class="fas fa-moon" id="darkModeIcon"></i><span id="darkModeLabel">Dark Mode</span>
+                </a>
+                <a href="#" class="sidebar-link sidebar-logout" onclick="logout(); return false;">
+                    <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+                </a>
+            </nav>
+            <div class="sidebar-cta">
+                <div class="cta-icon"><i class="fas fa-rocket"></i></div>
+                <p class="cta-title">Track Progress</p>
+                <p class="cta-desc">Add sessions and get AI-powered tips!</p>
+                <button class="btn btn-cta" data-bs-toggle="modal" data-bs-target="#addSessionModal">
+                    <i class="fas fa-plus"></i> Add Session
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div>
+                        <h2 class="greeting" id="greetingText">Hello, Student 👋</h2>
+                        <p class="greeting-sub">Let's check your study progress today!</p>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <div class="search-box" style="position:relative">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search pages, subjects..." id="globalSearchInput" oninput="handleGlobalSearch()" onfocus="showSearchResults()" autocomplete="off">
+                        <div class="search-results-dropdown" id="searchDropdown"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: DASHBOARD ====== -->
+            <div class="page-content active" id="page-dashboard">
+                <!-- Welcome Banner -->
+                <div class="dash-welcome" id="dashWelcome">
+                    <div class="dash-welcome-left">
+                        <h2 id="dashWelcomeGreeting">Welcome back, Student! 🎓</h2>
+                        <p>Ready to crush your study goals today? Check your stats, log a session, or start a timer — let's make today count!</p>
+                        <div class="dash-welcome-actions">
+                            <button class="dw-btn dw-btn-primary" onclick="switchPage('sessions')"><i class="fas fa-plus me-1"></i>Add Session</button>
+                            <button class="dw-btn dw-btn-secondary" onclick="switchPage('timer')"><i class="fas fa-stopwatch me-1"></i>Start Timer</button>
+                            <button class="dw-btn dw-btn-outline" onclick="switchPage('journal')"><i class="fas fa-book-open me-1"></i>Write Journal</button>
+                        </div>
+                    </div>
+                    <div class="dash-welcome-right">
+                        <div class="dw-date" id="dwDate"></div>
+                        <div class="dw-motivation" id="dwMotivation"></div>
+                    </div>
+                </div>
+
+                <!-- Section Label -->
+                <div class="section-label">Overview</div>
+
+                <!-- Stat Cards -->
+                <div class="stat-cards" id="statsCardsContainer">
+                    <!-- JS populates -->
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card chart-large">
+                        <div class="chart-card-header">
+                            <h6>Study Hours</h6>
+                            <span class="header-pill">Weekly</span>
+                        </div>
+                        <div class="chart-body-split">
+                            <div class="chart-canvas-wrap">
+                                <canvas id="weeklyChart" height="200"></canvas>
+                            </div>
+                            <div class="chart-side-stats" id="chartSideStats"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card chart-small">
+                        <div class="chart-card-header">
+                            <h6>Performance</h6>
+                        </div>
+                        <div class="chart-body-center">
+                            <canvas id="performanceChart" height="220"></canvas>
+                            <div id="performanceSummary" class="perf-summary"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score Trend -->
+                <div class="chart-card chart-full">
+                    <div class="chart-card-header">
+                        <h6><i class="fas fa-chart-line me-2"></i>Score Trend Over Time</h6>
+                    </div>
+                    <div class="chart-body-padded">
+                        <canvas id="trendChart" height="240"></canvas>
+                    </div>
+                </div>
+
+                <!-- Sessions Table (dashboard preview) -->
+                <div class="chart-card chart-full">
+                    <div class="chart-card-header">
+                        <h6><i class="fas fa-list-check me-2"></i>Recent Study Sessions</h6>
+                    </div>
+                    <div class="sessions-table-wrap" id="recentSessionsContainer">
+                        <p class="empty-text">No sessions yet. Add your first study session!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: SESSIONS ====== -->
+            <div class="page-content" id="page-sessions">
+                <div class="section-label">All Study Sessions</div>
+                <div class="page-actions">
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSessionModal">
+                        <i class="fas fa-plus me-1"></i> Add Session
+                    </button>
+                </div>
+                <div class="chart-card chart-full" style="margin-top:1rem">
+                    <div class="sessions-table-wrap" id="allSessionsContainer">
+                        <p class="empty-text">No sessions yet.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: AI TIPS (Recommendations) ====== -->
+            <div class="page-content" id="page-recommendations">
+                <div class="section-label">Tips to Know</div>
+                <div class="tips-grid" id="tipsPageContainer">
+                    <p class="empty-text">Loading recommendations...</p>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: PROGRESS ====== -->
+            <div class="page-content" id="page-progress">
+                <div class="section-label">Detailed Progress</div>
+                <div id="progressPageContainer">
+                    <p class="empty-text">Loading progress data...</p>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: SCHEDULE ====== -->
+            <div class="page-content" id="page-schedule">
+                <div class="section-label">Smart Study Planner</div>
+                <div class="sched-page" id="schedulePageContainer">
+                    <p class="empty-text">Loading schedule...</p>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: STUDY TIMER ====== -->
+            <div class="page-content" id="page-timer">
+                <div class="section-label">Study Timer</div>
+                <div class="timer-container">
+                    <!-- Mode Tabs -->
+                    <div class="timer-mode-tabs">
+                        <button class="timer-tab active" data-mode="pomodoro" onclick="switchTimerMode('pomodoro')">Pomodoro</button>
+                        <button class="timer-tab" data-mode="countdown" onclick="switchTimerMode('countdown')">Countdown</button>
+                        <button class="timer-tab" data-mode="stopwatch" onclick="switchTimerMode('stopwatch')">Stopwatch</button>
+                    </div>
+
+                    <!-- Timer Display -->
+                    <div class="timer-display-card">
+                        <div class="timer-ring-wrapper">
+                            <svg class="timer-ring" viewBox="0 0 260 260">
+                                <circle class="timer-ring-bg" cx="130" cy="130" r="115"/>
+                                <circle class="timer-ring-progress" id="timerRingProgress" cx="130" cy="130" r="115"/>
+                            </svg>
+                            <div class="timer-time" id="timerDisplay">25:00</div>
+                        </div>
+                        <div class="timer-status" id="timerStatus">Ready to focus</div>
+
+                        <!-- Pomodoro Session Dots -->
+                        <div class="pomodoro-dots" id="pomodoroDots">
+                            <span class="pom-dot" id="pomDot1"></span>
+                            <span class="pom-dot" id="pomDot2"></span>
+                            <span class="pom-dot" id="pomDot3"></span>
+                            <span class="pom-dot" id="pomDot4"></span>
+                        </div>
+                    </div>
+
+                    <!-- Timer Controls -->
+                    <div class="timer-controls">
+                        <button class="timer-btn timer-btn-start" id="timerStartBtn" onclick="startTimer()"><i class="fas fa-play"></i> Start</button>
+                        <button class="timer-btn timer-btn-pause" id="timerPauseBtn" onclick="pauseTimer()" style="display:none"><i class="fas fa-pause"></i> Pause</button>
+                        <button class="timer-btn timer-btn-resume" id="timerResumeBtn" onclick="resumeTimer()" style="display:none"><i class="fas fa-play"></i> Resume</button>
+                        <button class="timer-btn timer-btn-reset" id="timerResetBtn" onclick="resetTimer()"><i class="fas fa-redo"></i> Reset</button>
+                    </div>
+
+                    <!-- Timer Settings -->
+                    <div class="timer-settings-card">
+                        <h6><i class="fas fa-cog me-2"></i>Timer Settings</h6>
+                        <div class="timer-settings-grid">
+                            <div class="timer-setting" id="settingFocus">
+                                <label>Focus (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustSetting('focus', -5)">-</button>
+                                    <span id="settingFocusVal">25</span>
+                                    <button onclick="adjustSetting('focus', 5)">+</button>
+                                </div>
+                            </div>
+                            <div class="timer-setting" id="settingShortBreak">
+                                <label>Short Break (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustSetting('shortBreak', -1)">-</button>
+                                    <span id="settingShortBreakVal">5</span>
+                                    <button onclick="adjustSetting('shortBreak', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="timer-setting" id="settingLongBreak">
+                                <label>Long Break (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustSetting('longBreak', -1)">-</button>
+                                    <span id="settingLongBreakVal">15</span>
+                                    <button onclick="adjustSetting('longBreak', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="timer-setting" id="settingCountdown">
+                                <label>Duration (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustSetting('countdown', -5)">-</button>
+                                    <span id="settingCountdownVal">30</span>
+                                    <button onclick="adjustSetting('countdown', 5)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subject Tag -->
+                    <div class="timer-subject-card">
+                        <label><i class="fas fa-book me-1"></i> What are you studying?</label>
+                        <input type="text" class="form-control" id="timerSubject" placeholder="e.g. Mathematics">
+                    </div>
+
+                    <!-- Session History -->
+                    <div class="timer-history-card">
+                        <h6><i class="fas fa-history me-2"></i>Today's Timer Sessions</h6>
+                        <div id="timerHistoryList"><p class="empty-text">No sessions yet today. Start a timer!</p></div>
+                        <div class="timer-today-total" id="timerTodayTotal"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PAGE: HELP & GUIDE ====== -->
+            <div class="page-content" id="page-guide">
+                <div class="section-label">Help & Guide</div>
+                <div class="guide-container">
+
+                    <!-- Features Grid -->
+                    <h5 class="guide-section-title"><i class="fas fa-star me-2"></i>Features</h5>
+                    <div class="guide-features-grid">
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#eef2ff;color:#4f46e5"><i class="fas fa-th-large"></i></div>
+                            <h6>Dashboard</h6>
+                            <p>Get an overview of your study stats, charts showing weekly hours, performance breakdown, and score trends at a glance.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-book-open"></i></div>
+                            <h6>Study Sessions</h6>
+                            <p>Log every study session with subject, score, duration, and notes. Edit or delete sessions anytime to keep records accurate.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#fef3c7;color:#f59e0b"><i class="fas fa-lightbulb"></i></div>
+                            <h6>Tips to Know</h6>
+                            <p>Get AI-generated study tips and recommendations based on your weak areas and study patterns to improve your performance.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#fce7f3;color:#ec4899"><i class="fas fa-chart-line"></i></div>
+                            <h6>Progress Tracking</h6>
+                            <p>See detailed subject-wise progress with average scores, session counts, total study time, and trend indicators.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#dbeafe;color:#3b82f6"><i class="fas fa-calendar-alt"></i></div>
+                            <h6>Weekly Schedule</h6>
+                            <p>An auto-generated weekly timetable that prioritizes weak subjects and distributes study hours across the week.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fas fa-stopwatch"></i></div>
+                            <h6>Study Timer</h6>
+                            <p>Use the Pomodoro, Countdown, or Stopwatch timer to stay focused. Tracks your timed sessions with history and daily totals.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#ede9fe;color:#6366f1"><i class="fas fa-user-clock"></i></div>
+                            <h6>My Routine</h6>
+                            <p>Input your work hours and free time, set study preferences, and get a personalized weekly timetable that fits around your busy schedule.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#ffedd5;color:#f97316"><i class="fas fa-book-open"></i></div>
+                            <h6>My Journal</h6>
+                            <p>Reflect on your day — pick a mood, get personalized tips, write your thoughts, add tags, and revisit saved memories anytime.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#f1f5f9;color:#475569"><i class="fas fa-moon"></i></div>
+                            <h6>Dark Mode</h6>
+                            <p>Toggle dark mode from the sidebar for a comfortable viewing experience during late-night study sessions.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#fee2e2;color:#dc2626"><i class="fas fa-exclamation-triangle"></i></div>
+                            <h6>Weak Areas</h6>
+                            <p>The right sidebar highlights subjects where your scores are low, so you know exactly where to focus your efforts.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-robot"></i></div>
+                            <h6>AI Tutor</h6>
+                            <p>Get subject-specific study advice and explore learning topics with an AI-powered tutor that adapts to your needs.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#f0f9ff;color:#0284c7"><i class="fas fa-cog"></i></div>
+                            <h6>Settings</h6>
+                            <p>Manage your profile, change password, toggle dark mode, enable notifications, export data, and clear cache.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#fdf4ff;color:#a855f7"><i class="fas fa-users"></i></div>
+                            <h6>About Us</h6>
+                            <p>Meet the team behind StudyMate — five passionate students who built this AI-powered study companion for you.</p>
+                        </div>
+                        <div class="guide-feature-card">
+                            <div class="gf-icon" style="background:#fff7ed;color:#ea580c"><i class="fas fa-search"></i></div>
+                            <h6>Global Search</h6>
+                            <p>Instantly search across all pages, subjects, and features from the top bar. Jump to any section in a single click.</p>
+                        </div>
+                    </div>
+
+                    <!-- How to Use -->
+                    <h5 class="guide-section-title"><i class="fas fa-play-circle me-2"></i>How to Use</h5>
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="guide-step-num">1</div>
+                            <div class="guide-step-content">
+                                <h6>Create an Account & Login</h6>
+                                <p>Register with your name, email, and password. Then log in to access your personal dashboard.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">2</div>
+                            <div class="guide-step-content">
+                                <h6>Add Study Sessions</h6>
+                                <p>Click <strong>"Add Session"</strong> from the sidebar or dashboard. Enter the subject, your score (0-100), duration in minutes, and any notes.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">3</div>
+                            <div class="guide-step-content">
+                                <h6>Track Your Dashboard</h6>
+                                <p>Your dashboard auto-updates with charts: <strong>Weekly Study Hours</strong> (bar chart), <strong>Performance</strong> (doughnut), and <strong>Score Trend</strong> (line chart). The more sessions you add, the richer the data.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">4</div>
+                            <div class="guide-step-content">
+                                <h6>Read AI Tips & Recommendations</h6>
+                                <p>Go to <strong>Tips to Know</strong> for personalized study advice based on your weak areas and recent patterns.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">5</div>
+                            <div class="guide-step-content">
+                                <h6>Use the Study Timer</h6>
+                                <p>Go to <strong>Study Timer</strong> and pick a mode:<br>
+                                &bull; <strong>Pomodoro</strong> — 25 min focus + 5 min break (4 cycles = long break)<br>
+                                &bull; <strong>Countdown</strong> — Set a custom duration and study until it's done<br>
+                                &bull; <strong>Stopwatch</strong> — Open-ended timer to track how long you study<br>
+                                Adjust settings, tag the subject, and your completed sessions are saved automatically.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">6</div>
+                            <div class="guide-step-content">
+                                <h6>Check Progress & Schedule</h6>
+                                <p>Visit <strong>Progress</strong> for subject-wise breakdown and <strong>Schedule</strong> for a smart weekly study plan generated from your data.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">7</div>
+                            <div class="guide-step-content">
+                                <h6>Set Up Your Routine</h6>
+                                <p>Go to <strong>My Routine</strong> and add your busy time blocks (work, school, etc.). Pick the times of day you prefer to study, adjust session length and break time, then hit <strong>Generate My Timetable</strong> to get a personalized weekly schedule that avoids your busy hours and prioritizes weak subjects.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">8</div>
+                            <div class="guide-step-content">
+                                <h6>Write in Your Journal</h6>
+                                <p>Open <strong>My Journal</strong> to reflect on your day:<br>
+                                &bull; <strong>Pick a mood</strong> — Choose from 8 moods (Happy, Confident, Calm, Motivated, Tired, Stressed, Sad, Anxious)<br>
+                                &bull; <strong>Get a tip</strong> — A personalized tip appears based on how you're feeling<br>
+                                &bull; <strong>Write your thoughts</strong> — Describe your day, what you learned, or what you're grateful for<br>
+                                &bull; <strong>Add tags</strong> — Tag your entry (Productive, Learning, Exam Prep, etc.)<br>
+                                &bull; <strong>Revisit memories</strong> — Browse past entries, filter by mood, and expand any entry to read in full</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">9</div>
+                            <div class="guide-step-content">
+                                <h6>Chat with the AI Tutor</h6>
+                                <p>Navigate to <strong>AI Tutor</strong> from the sidebar:<br>
+                                &bull; <strong>Pick a subject</strong> — Select the subject you need help with from the dropdown<br>
+                                &bull; <strong>Ask anything</strong> — Type your doubt, concept question, or study request<br>
+                                &bull; <strong>Get instant answers</strong> — The AI provides detailed, subject-aware explanations<br>
+                                &bull; <strong>Explore topics</strong> — Use suggested prompts or type your own to dive deeper</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">10</div>
+                            <div class="guide-step-content">
+                                <h6>Manage Your Settings</h6>
+                                <p>Head to <strong>Settings</strong> to customize your experience:<br>
+                                &bull; <strong>Edit Profile</strong> — Update your name and email<br>
+                                &bull; <strong>Change Password</strong> — Keep your account secure with a new password<br>
+                                &bull; <strong>Preferences</strong> — Toggle Dark Mode and notification settings<br>
+                                &bull; <strong>Data Controls</strong> — Export all your data as JSON or clear the local cache</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">11</div>
+                            <div class="guide-step-content">
+                                <h6>Meet the Team</h6>
+                                <p>Click <strong>About Us</strong> in the sidebar to meet the five developers who built StudyMate. Hover over each card to see a fun animation and read each member's creative caption!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard Shortcuts -->
+                    <h5 class="guide-section-title"><i class="fas fa-keyboard me-2"></i>Quick Tips</h5>
+                    <div class="guide-tips-card">
+                        <ul>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Add at least 3-5 sessions to get meaningful chart data and AI recommendations.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Use different subjects to see the performance doughnut chart fill up.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>The Pomodoro timer plays a sound when each cycle ends — keep your volume on!</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Use Dark Mode for late-night study sessions to reduce eye strain.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Check your Weak Areas in the right sidebar to prioritize what to study next.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Regenerate your Routine timetable whenever your work hours or free time changes.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Write a journal entry daily — even 2 sentences helps build self-awareness over time.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Check your Journal's Mood Trend chart to spot patterns in how you feel across the week.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Use journal tags like "Exam Prep" or "Breakthrough" to quickly find important entries later.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Use the AI Tutor when you're stuck — it gives subject-specific answers tailored to your study level.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Use the Global Search bar at the top to instantly jump to any page, subject, or feature.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Export your data from Settings regularly so you always have a backup of your study history.</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Visit About Us to see the faces and stories behind the app you're using every day!</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ====== PAGE: MY ROUTINE ====== -->
+            <div class="page-content" id="page-routine">
+                <div class="section-label">My Daily Routine</div>
+                <div class="routine-page">
+
+                    <!-- Intro -->
+                    <div class="rt-intro-card">
+                        <div class="rt-intro-icon"><i class="fas fa-user-clock"></i></div>
+                        <div>
+                            <h5>Tell us about your day</h5>
+                            <p>Set your work/school hours and free time, and we'll build a personalized study timetable around your life.</p>
+                        </div>
+                    </div>
+
+                    <!-- Routine Form -->
+                    <div class="rt-form-card">
+                        <h6><i class="fas fa-briefcase me-2"></i>Your Work / School Hours</h6>
+                        <p class="rt-form-desc">When are you busy with work, school or other commitments?</p>
+                        <div id="rtBusySlots">
+                            <!-- JS populates -->
+                        </div>
+                        <button class="btn btn-sm rt-add-slot-btn" onclick="addBusySlot()"><i class="fas fa-plus me-1"></i>Add Time Block</button>
+                    </div>
+
+                    <div class="rt-form-card">
+                        <h6><i class="fas fa-coffee me-2"></i>Your Preferred Study Times</h6>
+                        <p class="rt-form-desc">When do you prefer to study? Select all that apply.</p>
+                        <div class="rt-pref-grid">
+                            <label class="rt-pref-option">
+                                <input type="checkbox" id="prefEarlyMorning" value="early-morning">
+                                <div class="rt-pref-box">
+                                    <i class="fas fa-cloud-sun"></i>
+                                    <span>Early Morning</span>
+                                    <small>5:00 – 8:00 AM</small>
+                                </div>
+                            </label>
+                            <label class="rt-pref-option">
+                                <input type="checkbox" id="prefMorning" value="morning" checked>
+                                <div class="rt-pref-box">
+                                    <i class="fas fa-sun"></i>
+                                    <span>Morning</span>
+                                    <small>8:00 – 12:00 PM</small>
+                                </div>
+                            </label>
+                            <label class="rt-pref-option">
+                                <input type="checkbox" id="prefAfternoon" value="afternoon">
+                                <div class="rt-pref-box">
+                                    <i class="fas fa-cloud"></i>
+                                    <span>Afternoon</span>
+                                    <small>12:00 – 4:00 PM</small>
+                                </div>
+                            </label>
+                            <label class="rt-pref-option">
+                                <input type="checkbox" id="prefEvening" value="evening" checked>
+                                <div class="rt-pref-box">
+                                    <i class="fas fa-moon"></i>
+                                    <span>Evening</span>
+                                    <small>4:00 – 8:00 PM</small>
+                                </div>
+                            </label>
+                            <label class="rt-pref-option">
+                                <input type="checkbox" id="prefNight" value="night">
+                                <div class="rt-pref-box">
+                                    <i class="fas fa-star"></i>
+                                    <span>Night</span>
+                                    <small>8:00 – 11:00 PM</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rt-form-card">
+                        <h6><i class="fas fa-sliders-h me-2"></i>Study Preferences</h6>
+                        <div class="rt-prefs-row">
+                            <div class="rt-pref-input">
+                                <label>Max study hours/day</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustRoutinePref('maxHours', -0.5)">-</button>
+                                    <span id="rtMaxHours">4</span>
+                                    <button onclick="adjustRoutinePref('maxHours', 0.5)">+</button>
+                                </div>
+                            </div>
+                            <div class="rt-pref-input">
+                                <label>Session length (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustRoutinePref('sessionLen', -5)">-</button>
+                                    <span id="rtSessionLen">45</span>
+                                    <button onclick="adjustRoutinePref('sessionLen', 5)">+</button>
+                                </div>
+                            </div>
+                            <div class="rt-pref-input">
+                                <label>Break length (min)</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustRoutinePref('breakLen', -5)">-</button>
+                                    <span id="rtBreakLen">15</span>
+                                    <button onclick="adjustRoutinePref('breakLen', 5)">+</button>
+                                </div>
+                            </div>
+                            <div class="rt-pref-input">
+                                <label>Days off per week</label>
+                                <div class="setting-stepper">
+                                    <button onclick="adjustRoutinePref('daysOff', -1)">-</button>
+                                    <span id="rtDaysOff">1</span>
+                                    <button onclick="adjustRoutinePref('daysOff', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary rt-generate-btn" onclick="generateRoutineTimetable()">
+                        <i class="fas fa-magic me-1"></i> Generate My Timetable
+                    </button>
+
+                    <!-- Generated Timetable -->
+                    <div id="rtTimetableOutput"></div>
+
+                </div>
+            </div>
+
+            <!-- ====== PAGE: MY JOURNAL ====== -->
+            <div class="page-content" id="page-journal">
+                <div class="section-label">My Journal</div>
+                <div class="journal-page">
+
+                    <!-- Intro -->
+                    <div class="jnl-intro">
+                        <div class="jnl-intro-icon"><i class="fas fa-feather-alt"></i></div>
+                        <div>
+                            <h4>How was your day?</h4>
+                            <p>Reflect on your day, capture your mood, and get personalized tips. Your entries are saved privately so you can look back anytime.</p>
+                        </div>
+                    </div>
+
+                    <!-- New Entry Form -->
+                    <div class="jnl-card jnl-write-card">
+                        <h5><i class="fas fa-pen-fancy me-2"></i>New Entry</h5>
+
+                        <!-- Mood Picker -->
+                        <p class="jnl-label">How are you feeling right now?</p>
+                        <div class="jnl-mood-picker" id="jnlMoodPicker">
+                            <button class="jnl-mood-btn" data-mood="happy" onclick="selectJournalMood('happy')">
+                                <span class="jnl-mood-emoji">😊</span><span class="jnl-mood-name">Happy</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="confident" onclick="selectJournalMood('confident')">
+                                <span class="jnl-mood-emoji">💪</span><span class="jnl-mood-name">Confident</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="calm" onclick="selectJournalMood('calm')">
+                                <span class="jnl-mood-emoji">😌</span><span class="jnl-mood-name">Calm</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="tired" onclick="selectJournalMood('tired')">
+                                <span class="jnl-mood-emoji">😴</span><span class="jnl-mood-name">Tired</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="stressed" onclick="selectJournalMood('stressed')">
+                                <span class="jnl-mood-emoji">😰</span><span class="jnl-mood-name">Stressed</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="sad" onclick="selectJournalMood('sad')">
+                                <span class="jnl-mood-emoji">😢</span><span class="jnl-mood-name">Sad</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="anxious" onclick="selectJournalMood('anxious')">
+                                <span class="jnl-mood-emoji">😟</span><span class="jnl-mood-name">Anxious</span>
+                            </button>
+                            <button class="jnl-mood-btn" data-mood="motivated" onclick="selectJournalMood('motivated')">
+                                <span class="jnl-mood-emoji">🔥</span><span class="jnl-mood-name">Motivated</span>
+                            </button>
+                        </div>
+
+                        <!-- Mood Tip (shown after mood selection) -->
+                        <div class="jnl-mood-tip" id="jnlMoodTip" style="display:none"></div>
+
+                        <!-- Journal Text -->
+                        <p class="jnl-label" style="margin-top:1.2rem">Write about your day</p>
+                        <textarea class="jnl-textarea" id="jnlText" rows="5" placeholder="What happened today? What did you learn? What are you grateful for?"></textarea>
+
+                        <!-- Tags -->
+                        <p class="jnl-label">Quick tags <small>(optional)</small></p>
+                        <div class="jnl-tags" id="jnlTags">
+                            <button class="jnl-tag" data-tag="productive" onclick="toggleJournalTag(this)">🎯 Productive</button>
+                            <button class="jnl-tag" data-tag="creative" onclick="toggleJournalTag(this)">🎨 Creative</button>
+                            <button class="jnl-tag" data-tag="social" onclick="toggleJournalTag(this)">👥 Social</button>
+                            <button class="jnl-tag" data-tag="learning" onclick="toggleJournalTag(this)">📚 Learning</button>
+                            <button class="jnl-tag" data-tag="exercise" onclick="toggleJournalTag(this)">🏃 Exercise</button>
+                            <button class="jnl-tag" data-tag="rest" onclick="toggleJournalTag(this)">🛋️ Rest Day</button>
+                            <button class="jnl-tag" data-tag="exam" onclick="toggleJournalTag(this)">📝 Exam Prep</button>
+                            <button class="jnl-tag" data-tag="breakthrough" onclick="toggleJournalTag(this)">💡 Breakthrough</button>
+                        </div>
+
+                        <button class="jnl-save-btn" onclick="saveJournalEntry()">
+                            <i class="fas fa-save me-1"></i> Save Entry
+                        </button>
+                    </div>
+
+                    <!-- Past Entries -->
+                    <div class="jnl-card">
+                        <div class="jnl-past-header">
+                            <h5><i class="fas fa-clock-rotate-left me-2"></i>Past Entries</h5>
+                            <div class="jnl-filter-row">
+                                <select id="jnlFilterMood" onchange="renderJournalEntries()">
+                                    <option value="all">All Moods</option>
+                                    <option value="happy">😊 Happy</option>
+                                    <option value="confident">💪 Confident</option>
+                                    <option value="calm">😌 Calm</option>
+                                    <option value="motivated">🔥 Motivated</option>
+                                    <option value="tired">😴 Tired</option>
+                                    <option value="stressed">😰 Stressed</option>
+                                    <option value="sad">😢 Sad</option>
+                                    <option value="anxious">😟 Anxious</option>
+                                </select>
+                                <button class="jnl-clear-btn" onclick="clearJournalFilter()" title="Clear filter"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div id="jnlEntries"></div>
+                    </div>
+
+                    <!-- Mood Trend -->
+                    <div class="jnl-card">
+                        <h5><i class="fas fa-chart-area me-2"></i>Mood Trend (Last 7 days)</h5>
+                        <div class="jnl-mood-trend" id="jnlMoodTrend"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ====== PAGE: AI TUTOR ====== -->
+            <div class="page-content" id="page-aitutor">
+                <div class="section-label">AI Study Tutor</div>
+                <div class="aitutor-page">
+
+                    <!-- Intro Banner -->
+                    <div class="ait-intro">
+                        <div class="ait-intro-icon"><i class="fas fa-robot"></i></div>
+                        <div>
+                            <h4>Your Personal AI Tutor</h4>
+                            <p>Get personalized guidance on stress management, concentration techniques, and smart study strategies — tailored to each of your subjects.</p>
+                        </div>
+                    </div>
+
+                    <!-- Subject Selector -->
+                    <div class="ait-card">
+                        <h5><i class="fas fa-book me-2"></i>Choose a Subject</h5>
+                        <p class="ait-desc">Select a subject you've studied, or type a new one to get tailored advice.</p>
+                        <div class="ait-subject-picker" id="aitSubjectPicker">
+                            <p class="empty-text">Loading your subjects...</p>
+                        </div>
+                        <div class="ait-custom-subject">
+                            <input type="text" class="form-control" id="aitCustomSubject" placeholder="Or type any subject...">
+                            <button class="btn btn-primary" onclick="getAITutorAdvice(document.getElementById('aitCustomSubject').value)"><i class="fas fa-magic me-1"></i>Get Advice</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Topics -->
+                    <div class="ait-card">
+                        <h5><i class="fas fa-bolt me-2"></i>Quick Topics</h5>
+                        <div class="ait-quick-topics">
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('stress')"><i class="fas fa-brain"></i> Handle Exam Stress</button>
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('focus')"><i class="fas fa-crosshairs"></i> Improve Focus</button>
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('motivation')"><i class="fas fa-fire"></i> Stay Motivated</button>
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('memory')"><i class="fas fa-puzzle-piece"></i> Boost Memory</button>
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('timemanagement')"><i class="fas fa-clock"></i> Time Management</button>
+                            <button class="ait-topic-btn" onclick="getAITutorTopic('anxiety')"><i class="fas fa-heart"></i> Reduce Anxiety</button>
+                        </div>
+                    </div>
+
+                    <!-- AI Response Output -->
+                    <div class="ait-card" id="aitResponseCard" style="display:none">
+                        <div class="ait-response-header">
+                            <div class="ait-avatar"><i class="fas fa-robot"></i></div>
+                            <div>
+                                <h5 id="aitResponseTitle">AI Tutor</h5>
+                                <small id="aitResponseSub"></small>
+                            </div>
+                        </div>
+                        <div class="ait-response-body" id="aitResponseBody">
+                            <p class="empty-text">Loading advice...</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ====== PAGE: SETTINGS ====== -->
+            <!-- ====== PAGE: ABOUT US ====== -->
+            <div class="page-content" id="page-aboutus">
+                <div class="section-label">About Us</div>
+                <div class="aboutus-hero">
+                    <div class="aboutus-hero-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <h2 class="aboutus-hero-title">Meet the Minds Behind <span>StudyMate</span></h2>
+                    <p class="aboutus-hero-desc">We're a passionate team of students who believe technology can transform the way we learn. StudyMate is our vision of an AI-powered study companion that helps every student reach their full potential.</p>
+                </div>
+
+                <div class="team-grid">
+                    <!-- Yashwanth M -->
+                    <div class="team-card">
+                        <div class="team-card-img-wrap">
+                            <img src="images/Yashwanth.jpg" alt="Yashwanth M" class="team-card-img">
+                            <div class="team-card-overlay">
+                                <span class="team-role-badge">Ideator & Executor</span>
+                            </div>
+                        </div>
+                        <div class="team-card-body">
+                            <h5 class="team-name">Yashwanth M</h5>
+                            <p class="team-role">The Visionary Thinker</p>
+                            <p class="team-caption">"Ideas spark change — execution makes it real." The creative engine behind StudyMate, Yashwanth transforms bold ideas into actionable solutions. When he thinks, things happen.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hari Keshav K -->
+                    <div class="team-card">
+                        <div class="team-card-img-wrap">
+                            <img src="images/Keshav.jpeg" alt="Hari Keshav K" class="team-card-img">
+                            <div class="team-card-overlay">
+                                <span class="team-role-badge">Presenter & Communicator</span>
+                            </div>
+                        </div>
+                        <div class="team-card-body">
+                            <h5 class="team-name">Hari Keshav K</h5>
+                            <p class="team-role">The Confident Voice</p>
+                            <p class="team-caption">"Confidence isn't about knowing everything — it's about presenting anything with conviction." Keshav brings our story to life, pitching our vision with clarity and charisma.</p>
+                        </div>
+                    </div>
+
+                    <!-- Vedha -->
+                    <div class="team-card">
+                        <div class="team-card-img-wrap">
+                            <img src="images/vedha.jpeg" alt="Vedha" class="team-card-img">
+                            <div class="team-card-overlay">
+                                <span class="team-role-badge">Researcher & Analyst</span>
+                            </div>
+                        </div>
+                        <div class="team-card-body">
+                            <h5 class="team-name">Vedha</h5>
+                            <p class="team-role">The Knowledge Architect</p>
+                            <p class="team-caption">"Deep research fuels intelligent solutions." Vedha's curiosity and depth of knowledge shape every strategic decision. If there's data, Vedha has already analyzed it.</p>
+                        </div>
+                    </div>
+
+                    <!-- Arjun S -->
+                    <div class="team-card">
+                        <div class="team-card-img-wrap">
+                            <img src="images/Arjun.jpeg" alt="Arjun S" class="team-card-img">
+                            <div class="team-card-overlay">
+                                <span class="team-role-badge">Performance Driven</span>
+                            </div>
+                        </div>
+                        <div class="team-card-body">
+                            <h5 class="team-name">Arjun S</h5>
+                            <p class="team-role">The Academic Ace</p>
+                            <p class="team-caption">"Excellence is not a skill — it's an attitude." Arjun's razor-sharp focus and academic brilliance ensure our product meets the highest standards of quality.</p>
+                        </div>
+                    </div>
+
+                    <!-- Nandan Ravisankar -->
+                    <div class="team-card">
+                        <div class="team-card-img-wrap">
+                            <img src="images/nandan.jpg" alt="Nandan Ravisankar" class="team-card-img">
+                            <div class="team-card-overlay">
+                                <span class="team-role-badge">Team Coordinator</span>
+                            </div>
+                        </div>
+                        <div class="team-card-body">
+                            <h5 class="team-name">Nandan Ravisankar</h5>
+                            <p class="team-role">The Master Organizer</p>
+                            <p class="team-caption">"Great teams don't happen by accident — they're orchestrated." Nandan keeps the wheels turning, coordinating every moving piece to deliver results on time, every time.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aboutus-footer">
+                    <p>Built with <i class="fas fa-heart" style="color:#ec4899"></i> by Team StudyMate &copy; 2026</p>
+                </div>
+            </div>
+
+            <div class="page-content" id="page-mocktest">
+                <div class="section-label">Mock Test - Full Subject Assessment</div>
+                <div class="mocktest-container">
+                    
+                    <!-- Setup Phase -->
+                    <div class="mt-setup" id="mtSetup">
+                        <div class="mt-hero">
+                            <div class="mt-hero-icon"><i class="fas fa-file-alt"></i></div>
+                            <h3>Take a Full Mock Test</h3>
+                            <p>Choose a preloaded subject or upload your own syllabus to generate a personalized 25-question mock test!</p>
+                        </div>
+
+                        <!-- Tab Switcher -->
+                        <div class="mt-tabs">
+                            <button class="mt-tab active" data-tab="subjects" onclick="mtSwitchTab('subjects')">
+                                <i class="fas fa-th-large me-2"></i>Choose Subject
+                            </button>
+                            <button class="mt-tab" data-tab="upload" onclick="mtSwitchTab('upload')">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload Syllabus
+                            </button>
+                        </div>
+
+                        <!-- TAB 1: Preloaded Subjects -->
+                        <div class="mt-tab-content" id="mtTabSubjects">
+                            <div class="mt-subject-grid" id="mtSubjectGrid">
+                                <div class="mt-subject-card" data-subject="Database Systems">
+                                    <div class="mt-subject-icon"><i class="fas fa-database"></i></div>
+                                    <div class="mt-subject-name">Database Systems</div>
+                                    <div class="mt-subject-desc">25 questions covering SQL, normalization, and database design</div>
+                                </div>
+                                <div class="mt-subject-card" data-subject="Data Structures">
+                                    <div class="mt-subject-icon"><i class="fas fa-project-diagram"></i></div>
+                                    <div class="mt-subject-name">Data Structures</div>
+                                    <div class="mt-subject-desc">25 questions on arrays, trees, graphs, and algorithms</div>
+                                </div>
+                                <div class="mt-subject-card" data-subject="Computer Organization">
+                                    <div class="mt-subject-icon"><i class="fas fa-microchip"></i></div>
+                                    <div class="mt-subject-name">Computer Organization</div>
+                                    <div class="mt-subject-desc">25 questions on CPU architecture, memory, and instruction sets</div>
+                                </div>
+                                <div class="mt-subject-card" data-subject="Machine Learning">
+                                    <div class="mt-subject-icon"><i class="fas fa-robot"></i></div>
+                                    <div class="mt-subject-name">Machine Learning</div>
+                                    <div class="mt-subject-desc">25 questions on supervised/unsupervised learning and model evaluation</div>
+                                </div>
+                            </div>
+
+                            <!-- Config Bar -->
+                            <div class="mt-config-bar" id="mtConfigBar" style="display:none;">
+                                <div class="mt-config-bar-subject">
+                                    <i class="fas fa-book-open"></i>
+                                    <span id="mtSelectedSubjectName">Select a subject</span>
+                                </div>
+                                <div class="mt-config-grid">
+                                    <div class="mt-config-item">
+                                        <label>Time Limit (minutes)</label>
+                                        <input type="number" id="mtTimeLimit" class="form-control" value="60" min="10" max="180">
+                                    </div>
+                                </div>
+                                <div class="mt-actions">
+                                    <button class="btn btn-primary btn-lg" onclick="startMockTest()">
+                                        <i class="fas fa-play me-2"></i> Start Mock Test (25 Questions)
+                                    </button>
+                                </div>
+                                <div class="mt-status" id="mtStatus"></div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Upload Syllabus -->
+                        <div class="mt-tab-content" id="mtTabUpload" style="display:none;">
+                            <div class="mt-upload-section">
+                                <div class="mt-upload-zone" id="mtDropZone">
+                                    <div class="mt-upload-zone-inner">
+                                        <i class="fas fa-cloud-upload-alt mt-upload-icon"></i>
+                                        <h5>Drag &amp; Drop your syllabus file here</h5>
+                                        <p>Supports PDF, DOCX, TXT (Max 10MB)</p>
+                                        <span class="mt-upload-or">— OR —</span>
+                                        <label class="btn btn-outline-primary mt-upload-browse-btn">
+                                            <i class="fas fa-folder-open me-1"></i> Browse Files
+                                            <input type="file" id="mtFileInput" accept=".pdf,.docx,.txt" style="display:none;" onchange="mtHandleFileSelect(event)">
+                                        </label>
+                                    </div>
+                                    <div class="mt-file-info" id="mtFileInfo" style="display:none;">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span id="mtFileName"></span>
+                                        <span id="mtFileSize"></span>
+                                        <button class="mt-file-remove" onclick="mtRemoveFile()"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+
+                                <div class="mt-upload-divider">
+                                    <span>OR paste your syllabus text below</span>
+                                </div>
+
+                                <textarea class="mt-paste-area" id="mtSyllabusText" rows="8" placeholder="Paste your syllabus content here..."></textarea>
+
+                                <div class="mt-upload-config">
+                                    <div class="mt-config-item">
+                                        <label>Time Limit (minutes)</label>
+                                        <input type="number" id="mtUploadTimeLimit" class="form-control" value="60" min="10" max="180">
+                                    </div>
+                                    <button class="btn btn-primary btn-lg mt-upload-generate-btn" id="mtGenerateBtn" onclick="mtSubmitSyllabus()">
+                                        <i class="fas fa-magic me-2"></i> Generate Mock Test from Syllabus
+                                    </button>
+                                </div>
+
+                                <div class="mt-upload-status" id="mtUploadStatus" style="display:none;">
+                                    <div class="mt-loading-spinner"></div>
+                                    <p id="mtUploadStatusText">Analyzing syllabus and generating questions...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Phase -->
+                    <div class="mt-quiz" id="mtQuiz" style="display:none;">
+                        <div class="mt-quiz-header">
+                            <div class="mt-quiz-info">
+                                <h5 id="mtQuizSubject"></h5>
+                                <span id="mtCounter">Q 1 / 25</span>
+                            </div>
+                            <div class="mt-timer" id="mtTimer">
+                                <i class="fas fa-clock"></i> <span id="mtTimeRemaining">60:00</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="quitMockTest()">
+                                <i class="fas fa-times"></i> Quit Test
+                            </button>
+                        </div>
+
+                        <div class="mt-progress-section">
+                            <div class="mt-progress-bar">
+                                <div class="mt-progress-fill" id="mtProgressFill"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-quiz-body">
+                            <div class="mt-question-panel">
+                                <div class="mt-question-card" id="mtQuestionCard">
+                                    <div class="mt-question-header">
+                                        <span class="mt-question-num" id="mtQuestionNum">Question 1</span>
+                                        <span class="mt-question-points" id="mtQuestionPoints">1 Mark</span>
+                                    </div>
+                                    <h5 class="mt-question-text" id="mtQuestionText"></h5>
+                                    <div class="mt-options" id="mtOptions"></div>
+                                </div>
+
+                                <div class="mt-action-bar">
+                                    <button class="mt-action-btn mt-btn-save-next" id="mtSaveNextBtn" onclick="mtSaveAndNext()">
+                                        <i class="fas fa-arrow-right me-1"></i> Save &amp; Next
+                                    </button>
+                                    <button class="mt-action-btn mt-btn-mark-review" id="mtMarkReviewBtn" onclick="mtMarkForReview()">
+                                        <i class="fas fa-flag me-1"></i> Mark for Review
+                                    </button>
+                                    <button class="mt-action-btn mt-btn-submit" id="mtSubmitBtn" onclick="submitMockTest()">
+                                        <i class="fas fa-paper-plane me-1"></i> Submit
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-sidebar-panel">
+                                <div class="mt-sidebar-legend">
+                                    <span class="mt-legend-item"><span class="mt-legend-dot dot-current"></span>Current</span>
+                                    <span class="mt-legend-item"><span class="mt-legend-dot dot-answered"></span>Answered</span>
+                                    <span class="mt-legend-item"><span class="mt-legend-dot dot-review"></span>Review</span>
+                                    <span class="mt-legend-item"><span class="mt-legend-dot dot-unanswered"></span>Not Visited</span>
+                                </div>
+                                <h6><i class="fas fa-th me-1"></i>Questions</h6>
+                                <div class="mt-q-list" id="mtQuestionList"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Phase -->
+                    <div class="mt-results" id="mtResults" style="display:none;">
+                        <div class="mt-result-hero" id="mtResultHero">
+                            <div class="mt-score-circle">
+                                <div class="mt-score-value" id="mtScoreValue">0%</div>
+                            </div>
+                            <div class="mt-level-badge" id="mtLevelBadge">
+                                <i class="fas fa-medal"></i>
+                                <span id="mtLevelText">Intermediate</span>
+                            </div>
+                            <h3 id="mtResultTitle">Test Complete!</h3>
+                            <p id="mtResultSubtitle">Here's your detailed performance analysis</p>
+                        </div>
+                        
+                        <div class="mt-result-stats">
+                            <div class="mt-stat-item">
+                                <div class="mt-stat-icon">✅</div>
+                                <div class="mt-stat-value" id="mtStatCorrect">0</div>
+                                <div class="mt-stat-label">Correct</div>
+                            </div>
+                            <div class="mt-stat-item">
+                                <div class="mt-stat-icon">📝</div>
+                                <div class="mt-stat-value" id="mtStatTotal">0</div>
+                                <div class="mt-stat-label">Total Questions</div>
+                            </div>
+                            <div class="mt-stat-item">
+                                <div class="mt-stat-icon">⚠️</div>
+                                <div class="mt-stat-value" id="mtStatWeak">0</div>
+                                <div class="mt-stat-label">Weak Units</div>
+                            </div>
+                            <div class="mt-stat-item">
+                                <div class="mt-stat-icon">⏱️</div>
+                                <div class="mt-stat-value" id="mtStatTime">0 min</div>
+                                <div class="mt-stat-label">Time Taken</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-analysis-section" id="mtUnitBreakdownSection">
+                            <h4><i class="fas fa-chart-bar me-2"></i>Unit-wise Performance</h4>
+                            <div class="mt-unit-breakdown" id="mtUnitBreakdown"></div>
+                        </div>
+                        
+                        <div class="mt-roadmap-section" id="mtRoadmapSection">
+                            <h4><i class="fas fa-map me-2"></i>Your Personalized Learning Roadmap</h4>
+                            <p class="mt-roadmap-subtitle">Topics are ordered by priority. Focus on <span style="color:#ef4444;">weak</span> areas first.</p>
+                            <div class="mt-roadmap-content" id="mtRoadmapContent"></div>
+                        </div>
+
+                        <div class="mt-tips-section" id="mtTipsSection" style="display:none;">
+                            <h4><i class="fas fa-lightbulb me-2"></i>AI Study Tips</h4>
+                            <div class="mt-tips-content" id="mtTipsContent"></div>
+                        </div>
+
+                        <div class="mt-result-actions">
+                            <button class="btn btn-primary" onclick="retakeMockTest()">
+                                <i class="fas fa-redo"></i> Retake Test
+                            </button>
+                            <button class="btn btn-secondary" onclick="backToMockTestSetup()">
+                                <i class="fas fa-home"></i> Back to Subjects
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="page-content" id="page-settings">
+                <div class="section-label">Settings</div>
+                <div class="settings-page">
+
+                    <!-- Profile Info Banner -->
+                    <div class="set-banner">
+                        <div class="set-banner-avatar"><i class="fas fa-user-graduate"></i></div>
+                        <div>
+                            <h4 id="setBannerName">Student</h4>
+                            <p id="setBannerEmail">user@email.com</p>
+                        </div>
+                    </div>
+
+                    <!-- Account Details -->
+                    <div class="set-card">
+                        <h5><i class="fas fa-id-card me-2"></i>Account Details</h5>
+                        <div class="set-field-group">
+                            <div class="set-field">
+                                <label>Full Name</label>
+                                <div class="set-field-row">
+                                    <input type="text" class="form-control" id="setName" placeholder="Your name">
+                                    <button class="btn btn-sm btn-primary" onclick="updateProfile('name')"><i class="fas fa-save"></i> Save</button>
+                                </div>
+                            </div>
+                            <div class="set-field">
+                                <label>Email Address</label>
+                                <div class="set-field-row">
+                                    <input type="email" class="form-control" id="setEmail" disabled>
+                                    <span class="set-field-badge"><i class="fas fa-lock"></i> Locked</span>
+                                </div>
+                                <small class="set-hint">Email cannot be changed for security reasons.</small>
+                            </div>
+                            <div class="set-field">
+                                <label>User ID</label>
+                                <div class="set-field-row">
+                                    <input type="text" class="form-control" id="setUserId" disabled>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="copyUserId()"><i class="fas fa-copy"></i> Copy</button>
+                                </div>
+                            </div>
+                            <div class="set-field">
+                                <label>Member Since</label>
+                                <input type="text" class="form-control" id="setJoinDate" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div class="set-card">
+                        <h5><i class="fas fa-key me-2"></i>Change Password</h5>
+                        <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                            <div class="set-field-group">
+                                <div class="set-field">
+                                    <label>Current Password</label>
+                                    <div class="set-password-wrap">
+                                        <input type="password" class="form-control" id="setCurrPassword" placeholder="Enter current password" required>
+                                        <button type="button" class="set-eye-btn" onclick="togglePasswordVis('setCurrPassword', this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="set-field">
+                                    <label>New Password</label>
+                                    <div class="set-password-wrap">
+                                        <input type="password" class="form-control" id="setNewPassword" placeholder="Enter new password" required minlength="6">
+                                        <button type="button" class="set-eye-btn" onclick="togglePasswordVis('setNewPassword', this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="set-field">
+                                    <label>Confirm New Password</label>
+                                    <div class="set-password-wrap">
+                                        <input type="password" class="form-control" id="setConfirmPassword" placeholder="Re-enter new password" required minlength="6">
+                                        <button type="button" class="set-eye-btn" onclick="togglePasswordVis('setConfirmPassword', this)"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-shield-alt me-1"></i>Update Password</button>
+                        </form>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div class="set-card">
+                        <h5><i class="fas fa-sliders-h me-2"></i>Preferences</h5>
+                        <div class="set-field-group">
+                            <div class="set-toggle-row">
+                                <div>
+                                    <strong>Dark Mode</strong>
+                                    <small>Switch between light and dark theme</small>
+                                </div>
+                                <label class="set-switch">
+                                    <input type="checkbox" id="setDarkToggle" onchange="toggleDarkMode()">
+                                    <span class="set-slider"></span>
+                                </label>
+                            </div>
+                            <div class="set-toggle-row">
+                                <div>
+                                    <strong>Sound Effects</strong>
+                                    <small>Play sounds on timer completion</small>
+                                </div>
+                                <label class="set-switch">
+                                    <input type="checkbox" id="setSoundToggle" checked onchange="toggleSetting('sound', this.checked)">
+                                    <span class="set-slider"></span>
+                                </label>
+                            </div>
+                            <div class="set-toggle-row">
+                                <div>
+                                    <strong>Desktop Notifications</strong>
+                                    <small>Get notified when study timer ends</small>
+                                </div>
+                                <label class="set-switch">
+                                    <input type="checkbox" id="setNotifToggle" onchange="toggleNotifications(this.checked)">
+                                    <span class="set-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data & Storage -->
+                    <div class="set-card">
+                        <h5><i class="fas fa-database me-2"></i>Data & Storage</h5>
+                        <div class="set-field-group">
+                            <div class="set-info-row">
+                                <div>
+                                    <strong>Local Storage Used</strong>
+                                    <small id="setStorageUsed">Calculating...</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-warning" onclick="clearLocalData()"><i class="fas fa-broom me-1"></i>Clear Cache</button>
+                            </div>
+                            <div class="set-info-row">
+                                <div>
+                                    <strong>Export My Data</strong>
+                                    <small>Download all your study sessions as JSON</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="exportUserData()"><i class="fas fa-download me-1"></i>Export</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="set-card set-danger">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone</h5>
+                        <div class="set-info-row">
+                            <div>
+                                <strong>Delete All Sessions</strong>
+                                <small>Permanently remove all your study session data.</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAllSessions()"><i class="fas fa-trash me-1"></i>Delete All</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="right-sidebar" id="rightSidebar">
+            <div class="profile-card">
+                <div class="profile-label">Profile <i class="fas fa-pen"></i></div>
+                <div class="profile-avatar"><i class="fas fa-user-graduate"></i></div>
+                <h6 class="profile-name" id="profileName">Student</h6>
+                <p class="profile-role">StudyMate User</p>
+                <button class="btn btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+            <div class="calendar-widget">
+                <div class="cal-header">
+                    <button class="cal-nav" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <span id="calMonthYear"></span>
+                    <button class="cal-nav" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="cal-days-header">
+                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                </div>
+                <div class="cal-days" id="calendarDays"></div>
+            </div>
+            <div class="widget-section">
+                <h6 class="widget-title"><i class="fas fa-exclamation-triangle me-1"></i> Weak Areas</h6>
+                <div id="weakAreasContainer"><p class="empty-text">Loading...</p></div>
+            </div>
+            <div class="widget-section">
+                <h6 class="widget-title"><i class="fas fa-lightbulb me-1"></i> AI Recommendations</h6>
+                <div id="recommendationsContainer"><p class="empty-text">Loading...</p></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Add Study Session Modal -->
+    <div class="modal fade" id="addSessionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add Study Session</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="addSessionForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="sessionSubject" placeholder="e.g., Mathematics" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Score (0-100)</label>
+                            <input type="number" class="form-control" id="sessionScore" min="0" max="100" placeholder="85" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Duration (minutes)</label>
+                            <input type="number" class="form-control" id="sessionDuration" min="1" placeholder="60" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date & Time</label>
+                            <input type="datetime-local" class="form-control" id="sessionDate">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes / Comments</label>
+                            <textarea class="form-control" id="sessionNotes" rows="3" placeholder="Add notes about this session..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Study Session Modal -->
+    <div class="modal fade" id="editSessionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Study Session</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editSessionForm">
+                    <input type="hidden" id="editSessionId">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="editSubject" placeholder="e.g., Mathematics" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Score (0-100)</label>
+                            <input type="number" class="form-control" id="editScore" min="0" max="100" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Duration (minutes)</label>
+                            <input type="number" class="form-control" id="editDuration" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date & Time</label>
+                            <input type="datetime-local" class="form-control" id="editDate">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes / Comments</label>
+                            <textarea class="form-control" id="editNotes" rows="3" placeholder="Add notes about this session..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="frontend/script.js"></script>
+    <script src="frontend/ai_functions.js"></script>
+</body>
+</html>

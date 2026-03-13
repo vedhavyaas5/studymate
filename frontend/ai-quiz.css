@@ -1,0 +1,605 @@
+/* ==================== GAMIFIED QUIZ STYLING ==================== */
+
+/* Game Quiz Container */
+.game-quiz-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 30px;
+    color: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    margin: 20px 0;
+}
+
+.game-header {
+    text-align: center;
+    margin-bottom: 30px;
+    animation: slideInDown 0.5s ease-out;
+}
+
+.game-header h2 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.game-header h3 {
+    font-size: 1.8em;
+    color: #fbbf24;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    margin-bottom: 10px;
+}
+
+.difficulty-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Game Stats */
+.game-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stat {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 15px 25px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 150px;
+}
+
+.stat span:first-child {
+    font-size: 0.9em;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.hp-bar {
+    display: inline-block;
+    background: linear-gradient(90deg, #10b981, #fbbf24);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Game Questions */
+.game-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.game-question-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.game-question-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateX(5px);
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 0.9em;
+}
+
+.question-num {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.question-points {
+    color: #fbbf24;
+    font-weight: bold;
+}
+
+.question-text {
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+/* Game Options */
+.game-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.game-option {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.game-option:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateX(5px);
+}
+
+.game-option input[type="radio"] {
+    margin-right: 12px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.game-option span {
+    flex: 1;
+    font-size: 1em;
+}
+
+/* Answer Text */
+.answer-text {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border-radius: 8px !important;
+}
+
+.answer-text::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.answer-text:focus {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.3) !important;
+}
+
+/* Submit Button */
+.game-submit-btn {
+    width: 100%;
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 15px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border: none;
+    border-radius: 10px;
+    color: #1f2937;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+    animation: pulse 2s infinite;
+}
+
+.game-submit-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.6);
+}
+
+.game-submit-btn:active {
+    transform: scale(0.98);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(251, 191, 36, 0.7);
+    }
+}
+
+/* Game Result */
+.game-result-container {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    border-radius: 15px;
+    padding: 40px;
+    text-align: center;
+    color: white;
+}
+
+.game-result-container h2 {
+    font-size: 2.5em;
+    margin-bottom: 30px;
+    animation: slideInDown 0.5s ease-out;
+}
+
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.result-stat {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.result-stat span {
+    display: block;
+    font-size: 0.95em;
+    opacity: 0.8;
+    margin-bottom: 10px;
+}
+
+.result-stat strong {
+    display: block;
+    font-size: 2em;
+    color: #fbbf24;
+}
+
+.result-message {
+    background: rgba(16, 185, 129, 0.1);
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.result-message p {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+.result-message .btn {
+    margin-top: 10px;
+}
+
+/* ==================== AI RECOMMENDATIONS STYLING ==================== */
+
+.ai-recommendations-container {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    border-radius: 15px;
+    padding: 30px;
+}
+
+.motivational-banner {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.motivational-banner h4 {
+    font-size: 1.4em;
+    margin: 0;
+}
+
+.recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.rec-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 2px solid #e5e7eb;
+}
+
+.rec-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: #6366f1;
+}
+
+.rec-emoji {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.rec-category {
+    font-weight: bold;
+    color: #6366f1;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+}
+
+.rec-tip {
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+/* Study Schedule Section */
+.study-schedule-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.study-schedule-section h5 {
+    margin-bottom: 20px;
+    color: #1f2937;
+}
+
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.schedule-card {
+    background: #f9fafb;
+    padding: 15px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.schedule-card:hover {
+    background: #f3f4f6;
+    transform: scale(1.02);
+}
+
+.schedule-card h6 {
+    margin-bottom: 10px;
+    color: #1f2937;
+}
+
+.schedule-card p {
+    margin: 8px 0;
+    font-size: 0.95em;
+}
+
+.priority-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+
+.schedule-card .priority-badge {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.reason {
+    color: #6b7280;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+/* ==================== TUTOR HELP STYLING ==================== */
+
+.tutorhelp-container {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 15px;
+    padding: 30px;
+    border: 2px solid rgba(217, 119, 6, 0.2);
+}
+
+.help-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(217, 119, 6, 0.2);
+}
+
+.help-header h3 {
+    color: #92400e;
+    margin: 0;
+}
+
+.tutor-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tutor-section h5 {
+    color: #d97706;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 2px solid rgba(217, 119, 6, 0.2);
+    padding-bottom: 10px;
+}
+
+.tutor-section p {
+    color: #4b5563;
+    line-height: 1.8;
+    margin: 0;
+}
+
+.key-points-list {
+    list-style: none;
+    padding: 0;
+}
+
+.key-points-list li {
+    padding: 10px 0;
+    padding-left: 30px;
+    position: relative;
+    color: #4b5563;
+}
+
+.key-points-list li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #10b981;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.tutor-section code {
+    background: #f3f4f6;
+    color: #d97706;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+}
+
+.tutor-section pre {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    border-left: 4px solid #d97706;
+}
+
+.tutor-section.warning {
+    background: #fef2f2;
+    border-left: 4px solid #dc2626;
+}
+
+.tutor-section.warning h5 {
+    color: #dc2626;
+}
+
+.tutor-section.warning ul {
+    list-style: none;
+    padding: 0;
+}
+
+.tutor-section.warning li {
+    padding: 8px 0;
+    padding-left: 30px;
+    position: relative;
+    color: #4b5563;
+}
+
+.tutor-section.warning li:before {
+    content: "✗";
+    position: absolute;
+    left: 0;
+    color: #dc2626;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* ==================== ANIMATIONS ==================== */
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+@media (max-width: 768px) {
+    .game-quiz-container {
+        padding: 20px;
+    }
+
+    .game-header h2 {
+        font-size: 1.8em;
+    }
+
+    .game-header h3 {
+        font-size: 1.3em;
+    }
+
+    .game-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .stat {
+        min-width: 100%;
+    }
+
+    .result-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .recommendations-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .result-message .btn {
+        width: 100%;
+    }
+
+    .help-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .help-header h3 {
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-header h2 {
+        font-size: 1.4em;
+    }
+
+    .game-header h3 {
+        font-size: 1em;
+    }
+
+    .game-questions {
+        max-height: 400px;
+    }
+
+    .game-submit-btn {
+        font-size: 1em;
+        padding: 12px;
+    }
+
+    .tutorhelp-container {
+        padding: 15px;
+    }
+
+    .tutor-section {
+        padding: 15px;
+    }
+}

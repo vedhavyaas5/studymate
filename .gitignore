@@ -1,0 +1,26 @@
+# Dependencies
+/node_modules
+/ai-study-analyzer/client/node_modules
+/ai-study-analyzer/server/node_modules
+
+# Python
+/backend/__pycache__/
+/backend/venv/
+/backend/env/
+/backend/.venv
+/backend/*.pyc
+
+# Build files
+/ai-study-analyzer/client/build
+
+# Environment variables
+.env
+ai-study-analyzer/client/.env
+ai-study-analyzer/server/.env
+backend/.env
+
+# IDE and OS files
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db

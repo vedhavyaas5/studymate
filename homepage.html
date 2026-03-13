@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyMate - AI-Powered Study Tracking Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="frontend/homepage.css">
+</head>
+<body>
+    <!-- ==================== NAVIGATION BAR ==================== -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-brain"></i>
+                <span class="brand-name">StudyMate</span>
+            </div>
+            
+            <div class="navbar-menu" id="navbarMenu">
+                <ul class="nav-links">
+                    <li><a href="index.html" class="nav-login">Login</a></li>
+                </ul>
+            </div>
+
+            <div class="navbar-actions">
+                <button class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">AI-Powered Study Tracking for Smarter Learning</h1>
+                <p class="hero-subtitle">StudyMate helps B.Tech students track study sessions, analyze performance, detect weak subjects, and generate personalized study plans using intelligent analytics.</p>
+                
+                <div class="hero-buttons">
+                    <button class="btn-primary" onclick="window.location.href='index.html'">Get Started</button>
+                    <button class="btn-secondary"><i class="fas fa-play-circle"></i> View Demo</button>
+                </div>
+
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">500+</span>
+                        <span class="stat-label">Active Students</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">100</span>
+                        <span class="stat-label">MCQ Questions</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">4</span>
+                        <span class="stat-label">Core Subjects</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="dashboard-preview glassmorphism">
+                    <div class="preview-header">
+                        <div class="preview-dot"></div>
+                        <div class="preview-dot"></div>
+                        <div class="preview-dot"></div>
+                    </div>
+                    
+                    <div class="preview-content">
+                        <div class="preview-section">
+                            <p class="preview-label">Study Statistics</p>
+                            <div class="preview-stat-card">
+                                <span class="stat-value">2.5</span>
+                                <span class="stat-unit">hrs</span>
+                            </div>
+                        </div>
+
+                        <div class="preview-section">
+                            <p class="preview-label">Subject Progress</p>
+                            <div class="progress-bars">
+                                <div class="progress-item">
+                                    <div class="progress-label">Data Structures</div>
+                                    <div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-label">Machine Learning</div>
+                                    <div class="progress-bar"><div class="progress-fill" style="width: 72%"></div></div>
+                                </div>
+                                <div class="progress-item">
+                                    <div class="progress-label">Database Management</div>
+                                    <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="preview-section">
+                            <p class="preview-label">Performance Score</p>
+                            <div class="performance-chart">
+                                <div class="chart-bar" style="height: 60%"></div>
+                                <div class="chart-bar" style="height: 75%"></div>
+                                <div class="chart-bar" style="height: 85%"></div>
+                                <div class="chart-bar" style="height: 92%"></div>
+                                <div class="chart-bar" style="height: 88%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FEATURES SECTION ==================== -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Powerful Features for Smart Learning</h2>
+                <p>Everything you need to track, analyze, and improve your study performance</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Performance Analytics</h3>
+                    <p>Track your study progress with detailed charts and insights about your learning patterns.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>AI Recommendations</h3>
+                    <p>Get personalized study suggestions based on your weak areas and learning style.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Smart Scheduling</h3>
+                    <p>AI-generated study timetables that adapt to your schedule and prioritize weak subjects.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <h3>Study Timer</h3>
+                    <p>Pomodoro timer and session tracking to maintain focus and productivity.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <h3>Session Logging</h3>
+                    <p>Log study sessions with subjects, scores, and notes for comprehensive tracking.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI Tutor</h3>
+                    <p>Get help with difficult concepts and questions from our AI-powered tutor.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== ANALYTICS SECTION ==================== -->
+    <section id="analytics" class="analytics">
+        <div class="container">
+            <div class="section-header">
+                <h2>Detailed Analytics & Insights</h2>
+                <p>Understand your learning patterns with comprehensive data visualization</p>
+            </div>
+
+            <div class="analytics-showcase">
+                <div class="analytics-item">
+                    <div class="analytics-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="analytics-content">
+                        <h3>Subject-wise Performance</h3>
+                        <p>See how you're performing across different subjects with detailed breakdowns.</p>
+                    </div>
+                </div>
+
+                <div class="analytics-item">
+                    <div class="analytics-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="analytics-content">
+                        <h3>Study Time Analysis</h3>
+                        <p>Track your study hours and identify your most productive study times.</p>
+                    </div>
+                </div>
+
+                <div class="analytics-item">
+                    <div class="analytics-icon">
+                        <i class="fas fa-trending-up"></i>
+                    </div>
+                    <div class="analytics-content">
+                        <h3>Progress Trends</h3>
+                        <p>Monitor your improvement over time with trend analysis and predictions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TOPIC TESTS SECTION ==================== -->
+    <section id="mock-tests" class="topic-tests">
+        <div class="container">
+            <div class="section-header">
+                <h2>AI Mock Tests</h2>
+                <p>Test your knowledge with 100 carefully crafted questions across 4 core subjects</p>
+            </div>
+
+            <div class="subjects-grid">
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Database Systems</h3>
+                    <p>25 questions covering SQL, normalization, and database design</p>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h3>Data Structures</h3>
+                    <p>25 questions on arrays, trees, graphs, and algorithms</p>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <h3>Computer Organization</h3>
+                    <p>25 questions on CPU architecture, memory, and instruction sets</p>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>Machine Learning</h3>
+                    <p>25 questions on supervised/unsupervised learning and model evaluation</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== CALL TO ACTION ==================== -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Transform Your Study Experience?</h2>
+                <p>Join thousands of students who are already improving their academic performance with StudyMate</p>
+                <button class="btn-primary btn-large" onclick="window.location.href='index.html'">
+                    Start Your Journey <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>StudyMate</h4>
+                <p>AI-powered study tracking for smarter learning</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#analytics">Analytics</a></li>
+                    <li><a href="index.html" onclick="localStorage.setItem('openPage','mocktest')">Mock Tests</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="#">Documentation</a></li>
+                    <li><a href="#">Tutorials</a></li>
+                    <li><a href="#">Blog</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">Support</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2024 StudyMate. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="frontend/homepage.js"></script>
+</body>
+</html>
