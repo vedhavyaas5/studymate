@@ -7,8 +7,8 @@ import jwt
 import os
 from dotenv import load_dotenv
 import math
-import google.generativeai as genai
 import json
+import requests
 import PyPDF2
 import io
 from werkzeug.utils import secure_filename
@@ -32,17 +32,103 @@ try:
     tutor_subjects_collection = db['tutor_subjects']
     tutor_topics_collection = db['tutor_topics']
     notes_collection = db['notes']
+    gamification_logs_collection = db['gamification_logs']
+    daily_challenges_collection = db['daily_challenges']
+    weekly_missions_collection = db['weekly_missions']
+    questions_collection = db['questions']
+    test_results_collection = db['test_results']
     print("[OK] Connected to MongoDB")
 except Exception as e:
     print(f"[ERROR] MongoDB connection failed: {e}")
 
+# ==================== GAMIFICATION CONSTANTS ====================
+
+LEVEL_THRESHOLDS = [
+    {'level': 1, 'name': 'Beginner Scholar', 'xp': 0},
+    {'level': 2, 'name': 'Active Learner', 'xp': 100},
+    {'level': 3, 'name': 'Knowledge Builder', 'xp': 250},
+    {'level': 4, 'name': 'Study Expert', 'xp': 500},
+    {'level': 5, 'name': 'Master Scholar', 'xp': 1000},
+    {'level': 6, 'name': 'Grand Scholar', 'xp': 2000},
+    {'level': 7, 'name': 'Legendary Learner', 'xp': 3500},
+]
+
+BADGE_DEFINITIONS = {
+    'first_step': {'name': 'First Step', 'icon': 'fa-shoe-prints', 'desc': 'Complete your first study session', 'color': '#6366f1'},
+    'quiz_master': {'name': 'Quiz Master', 'icon': 'fa-trophy', 'desc': 'Complete 10 mock tests', 'color': '#f59e0b'},
+    'focus_warrior': {'name': 'Focus Warrior', 'icon': 'fa-fire', 'desc': 'Study 5 hours total', 'color': '#ef4444'},
+    'consistency_king': {'name': 'Consistency King', 'icon': 'fa-crown', 'desc': '7 day study streak', 'color': '#8b5cf6'},
+    'ai_explorer': {'name': 'AI Explorer', 'icon': 'fa-robot', 'desc': 'Use AI tutor 5 times', 'color': '#06b6d4'},
+    'century_club': {'name': 'Century Club', 'icon': 'fa-star', 'desc': 'Reach 100 XP', 'color': '#eab308'},
+    'knowledge_seeker': {'name': 'Knowledge Seeker', 'icon': 'fa-book', 'desc': 'Study 5 different subjects', 'color': '#22c55e'},
+    'streak_master': {'name': 'Streak Master', 'icon': 'fa-bolt', 'desc': '30 day study streak', 'color': '#f97316'},
+    'half_millennium': {'name': 'Half Millennium', 'icon': 'fa-gem', 'desc': 'Reach 500 XP', 'color': '#ec4899'},
+    'perfectionist': {'name': 'Perfectionist', 'icon': 'fa-bullseye', 'desc': 'Score 100% on a mock test', 'color': '#14b8a6'},
+}
+
+REWARDS = [
+    {'id': 'dark_theme', 'name': 'Dark Theme', 'icon': 'fa-moon', 'level': 3, 'desc': 'Unlock dark mode theme'},
+    {'id': 'custom_avatar', 'name': 'Custom Avatar', 'icon': 'fa-user-astronaut', 'level': 5, 'desc': 'Unlock custom profile avatars'},
+    {'id': 'premium_planner', 'name': 'Premium Planner', 'icon': 'fa-calendar-check', 'level': 7, 'desc': 'Unlock premium study planner'},
+]
+
+STREAK_REWARDS = {3: 50, 7: 75, 15: 100, 30: 150}
+
 # Gemini API Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite']
+GEMINI_API_URL_TEMPLATE = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    print("[OK] Gemini API configured")
+    print(f"[OK] Gemini API key configured (key: {GEMINI_API_KEY[:10]}...)")
 else:
     print("[WARNING] GEMINI_API_KEY not set - AI features will be unavailable")
+
+
+def generate_gemini_text(prompt):
+    """Generate text from Gemini using REST API to avoid SDK import issues."""
+    if not GEMINI_API_KEY:
+        raise RuntimeError('GEMINI_API_KEY is not configured')
+
+    global GEMINI_MODEL
+    models_to_try = [GEMINI_MODEL] + [m for m in GEMINI_FALLBACK_MODELS if m != GEMINI_MODEL]
+    last_error = None
+
+    for model_name in models_to_try:
+        try:
+            response = requests.post(
+                GEMINI_API_URL_TEMPLATE.format(model=model_name),
+                params={'key': GEMINI_API_KEY},
+                json={'contents': [{'parts': [{'text': prompt}]}]},
+                timeout=45
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+            candidates = payload.get('candidates', [])
+            if not candidates:
+                raise RuntimeError(f"No candidates returned by Gemini model '{model_name}'")
+
+            parts = candidates[0].get('content', {}).get('parts', [])
+            text_parts = [
+                part.get('text', '')
+                for part in parts
+                if isinstance(part, dict) and part.get('text')
+            ]
+            generated_text = '\n'.join(text_parts).strip()
+            if not generated_text:
+                raise RuntimeError(f"Empty response returned by Gemini model '{model_name}'")
+
+            if model_name != GEMINI_MODEL:
+                GEMINI_MODEL = model_name
+                print(f"[OK] Switched Gemini model to fallback '{GEMINI_MODEL}'")
+            return generated_text
+        except (requests.RequestException, ValueError, RuntimeError) as exc:
+            last_error = exc
+            continue
+
+    raise RuntimeError(f'All Gemini models failed: {last_error}')
 
 # Helper Functions
 def generate_token(user_id):
@@ -156,6 +242,309 @@ def generate_recommendations(user_data):
         'weak_areas_count': len(weak_subjects)
     }
 
+# ==================== GAMIFICATION HELPERS ====================
+
+def calculate_level(xp):
+    """Calculate level from XP"""
+    current = LEVEL_THRESHOLDS[0]
+    for threshold in LEVEL_THRESHOLDS:
+        if xp >= threshold['xp']:
+            current = threshold
+        else:
+            break
+    # Find next level
+    idx = LEVEL_THRESHOLDS.index(current)
+    if idx < len(LEVEL_THRESHOLDS) - 1:
+        next_level = LEVEL_THRESHOLDS[idx + 1]
+        xp_for_next = next_level['xp'] - xp
+        xp_progress = xp - current['xp']
+        xp_needed = next_level['xp'] - current['xp']
+    else:
+        xp_for_next = 0
+        xp_progress = 0
+        xp_needed = 1  # prevent division by zero
+    return {
+        'level': current['level'],
+        'level_name': current['name'],
+        'xp_for_next': max(0, xp_for_next),
+        'xp_progress': xp_progress,
+        'xp_needed': xp_needed,
+        'progress_pct': min(100, round((xp_progress / xp_needed) * 100)) if xp_needed > 0 else 100
+    }
+
+def award_xp(user_id, points, activity):
+    """Award XP to user, recalculate level, log activity"""
+    from bson import ObjectId
+    if points <= 0:
+        return
+    user = users_collection.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return
+    old_xp = user.get('xp', 0)
+    new_xp = old_xp + points
+    level_info = calculate_level(new_xp)
+    users_collection.update_one(
+        {'_id': ObjectId(user_id)},
+        {'$set': {
+            'xp': new_xp,
+            'level': level_info['level'],
+            'level_name': level_info['level_name']
+        }}
+    )
+    gamification_logs_collection.insert_one({
+        'user_id': ObjectId(user_id),
+        'points': points,
+        'activity': activity,
+        'new_total': new_xp,
+        'timestamp': datetime.utcnow()
+    })
+    check_badges(user_id)
+
+def check_and_update_streak(user_id):
+    """Update study streak for user"""
+    from bson import ObjectId
+    user = users_collection.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    last_study = user.get('last_study_date')
+    streak = user.get('streak_count', 0)
+    longest = user.get('longest_streak', 0)
+
+    if last_study == today:
+        return  # Already studied today
+
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
+    if last_study == yesterday:
+        streak += 1
+    else:
+        streak = 1
+
+    longest = max(longest, streak)
+    users_collection.update_one(
+        {'_id': ObjectId(user_id)},
+        {'$set': {
+            'last_study_date': today,
+            'streak_count': streak,
+            'longest_streak': longest
+        }}
+    )
+    # Award streak milestone XP
+    if streak in STREAK_REWARDS:
+        award_xp(user_id, STREAK_REWARDS[streak], f'{streak}-day streak bonus')
+
+def check_badges(user_id):
+    """Check and award badges"""
+    from bson import ObjectId
+    user = users_collection.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return
+    earned = user.get('badges', [])
+    new_badges = []
+
+    # First Step - at least 1 session
+    if 'first_step' not in earned and user.get('total_sessions', 0) >= 1:
+        new_badges.append('first_step')
+
+    # Quiz Master - 10 mock tests
+    test_count = test_results_collection.count_documents({'user_id': ObjectId(user_id)})
+    if 'quiz_master' not in earned and test_count >= 10:
+        new_badges.append('quiz_master')
+
+    # Focus Warrior - 5 hours total
+    if 'focus_warrior' not in earned and user.get('total_study_hours', 0) >= 5:
+        new_badges.append('focus_warrior')
+
+    # Consistency King - 7 day streak
+    if 'consistency_king' not in earned and user.get('streak_count', 0) >= 7:
+        new_badges.append('consistency_king')
+
+    # AI Explorer - 5 AI tutor uses
+    if 'ai_explorer' not in earned and user.get('ai_tutor_uses', 0) >= 5:
+        new_badges.append('ai_explorer')
+
+    # Century Club - 100 XP
+    if 'century_club' not in earned and user.get('xp', 0) >= 100:
+        new_badges.append('century_club')
+
+    # Knowledge Seeker - 5 different subjects
+    distinct_subjects = sessions_collection.distinct('subject', {'user_id': ObjectId(user_id)})
+    if 'knowledge_seeker' not in earned and len(distinct_subjects) >= 5:
+        new_badges.append('knowledge_seeker')
+
+    # Streak Master - 30 day streak
+    if 'streak_master' not in earned and user.get('streak_count', 0) >= 30:
+        new_badges.append('streak_master')
+
+    # Half Millennium - 500 XP
+    if 'half_millennium' not in earned and user.get('xp', 0) >= 500:
+        new_badges.append('half_millennium')
+
+    # Perfectionist - 100% on a test
+    perfect = test_results_collection.find_one({'user_id': ObjectId(user_id), 'percentage': 100})
+    if 'perfectionist' not in earned and perfect:
+        new_badges.append('perfectionist')
+
+    if new_badges:
+        users_collection.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$addToSet': {'badges': {'$each': new_badges}}}
+        )
+
+def calculate_focus_score(user_id):
+    """Calculate focus score (0-100)"""
+    from bson import ObjectId
+    user = users_collection.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return 0
+
+    # Study time factor (max 40 points) - based on hours, capped at 50 hours
+    hours = min(user.get('total_study_hours', 0), 50)
+    time_score = (hours / 50) * 40
+
+    # Quiz accuracy factor (max 35 points)
+    results = list(test_results_collection.find({'user_id': ObjectId(user_id)}))
+    if results:
+        avg_pct = sum(r.get('percentage', 0) for r in results) / len(results)
+        accuracy_score = (avg_pct / 100) * 35
+    else:
+        accuracy_score = 0
+
+    # Streak factor (max 25 points) - capped at 30 days
+    streak = min(user.get('streak_count', 0), 30)
+    streak_score = (streak / 30) * 25
+
+    return min(100, round(time_score + accuracy_score + streak_score))
+
+def get_or_create_daily_challenge(user_id):
+    """Get today's daily challenge or create one"""
+    from bson import ObjectId
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    existing = daily_challenges_collection.find_one({
+        'user_id': ObjectId(user_id),
+        'date': today
+    })
+    if existing:
+        existing['_id'] = str(existing['_id'])
+        existing['user_id'] = str(existing['user_id'])
+        return existing
+
+    import random
+    tasks = [
+        {'type': 'study_time', 'desc': 'Study for 2 hours', 'target': 120, 'unit': 'minutes'},
+        {'type': 'mcq_count', 'desc': 'Answer 10 MCQs', 'target': 10, 'unit': 'questions'},
+        {'type': 'session_count', 'desc': 'Complete 3 study sessions', 'target': 3, 'unit': 'sessions'},
+    ]
+    challenge = {
+        'user_id': ObjectId(user_id),
+        'date': today,
+        'tasks': tasks,
+        'reward_xp': 40,
+        'completed': False,
+        'progress': {t['type']: 0 for t in tasks},
+        'created_at': datetime.utcnow()
+    }
+    result = daily_challenges_collection.insert_one(challenge)
+    challenge['_id'] = str(result.inserted_id)
+    challenge['user_id'] = str(challenge['user_id'])
+    return challenge
+
+def get_or_create_weekly_mission(user_id):
+    """Get this week's mission or create one"""
+    from bson import ObjectId
+    now = datetime.utcnow()
+    week_start = (now - timedelta(days=now.weekday())).strftime('%Y-%m-%d')
+    existing = weekly_missions_collection.find_one({
+        'user_id': ObjectId(user_id),
+        'week_start': week_start
+    })
+    if existing:
+        existing['_id'] = str(existing['_id'])
+        existing['user_id'] = str(existing['user_id'])
+        return existing
+
+    tasks = [
+        {'type': 'study_hours', 'desc': 'Study 10 hours this week', 'target': 600, 'unit': 'minutes'},
+        {'type': 'mock_tests', 'desc': 'Complete 3 mock tests', 'target': 3, 'unit': 'tests'},
+        {'type': 'subjects', 'desc': 'Study 5 different subjects', 'target': 5, 'unit': 'subjects'},
+    ]
+    mission = {
+        'user_id': ObjectId(user_id),
+        'week_start': week_start,
+        'tasks': tasks,
+        'reward_xp': 150,
+        'completed': False,
+        'progress': {t['type']: 0 for t in tasks},
+        'created_at': datetime.utcnow()
+    }
+    result = weekly_missions_collection.insert_one(mission)
+    mission['_id'] = str(result.inserted_id)
+    mission['user_id'] = str(mission['user_id'])
+    return mission
+
+def update_challenge_progress(user_id, task_type, increment=1):
+    """Update daily challenge progress"""
+    from bson import ObjectId
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    daily_challenges_collection.update_one(
+        {'user_id': ObjectId(user_id), 'date': today, 'completed': False},
+        {'$inc': {f'progress.{task_type}': increment}}
+    )
+    # Check if all tasks are complete
+    challenge = daily_challenges_collection.find_one({
+        'user_id': ObjectId(user_id), 'date': today, 'completed': False
+    })
+    if challenge:
+        all_done = True
+        for task in challenge['tasks']:
+            if challenge['progress'].get(task['type'], 0) < task['target']:
+                all_done = False
+                break
+        if all_done:
+            daily_challenges_collection.update_one(
+                {'_id': challenge['_id']},
+                {'$set': {'completed': True}}
+            )
+            award_xp(user_id, challenge['reward_xp'], 'Daily challenge completed')
+
+def update_mission_progress(user_id, task_type, increment=1):
+    """Update weekly mission progress"""
+    from bson import ObjectId
+    now = datetime.utcnow()
+    week_start = (now - timedelta(days=now.weekday())).strftime('%Y-%m-%d')
+    weekly_missions_collection.update_one(
+        {'user_id': ObjectId(user_id), 'week_start': week_start, 'completed': False},
+        {'$inc': {f'progress.{task_type}': increment}}
+    )
+    mission = weekly_missions_collection.find_one({
+        'user_id': ObjectId(user_id), 'week_start': week_start, 'completed': False
+    })
+    if mission:
+        all_done = True
+        for task in mission['tasks']:
+            if mission['progress'].get(task['type'], 0) < task['target']:
+                all_done = False
+                break
+        if all_done:
+            weekly_missions_collection.update_one(
+                {'_id': mission['_id']},
+                {'$set': {'completed': True}}
+            )
+            award_xp(user_id, mission['reward_xp'], 'Weekly mission completed')
+
+def ensure_gamification_fields(user_id):
+    """Ensure user has gamification fields (migration for existing users)"""
+    from bson import ObjectId
+    users_collection.update_one(
+        {'_id': ObjectId(user_id), 'xp': {'$exists': False}},
+        {'$set': {
+            'xp': 0, 'level': 1, 'level_name': 'Beginner Scholar',
+            'streak_count': 0, 'last_study_date': None,
+            'longest_streak': 0, 'badges': [],
+            'rewards_unlocked': [], 'ai_tutor_uses': 0
+        }}
+    )
+
 # ==================== ENDPOINTS ====================
 
 # 1. REGISTER Endpoint
@@ -182,7 +571,17 @@ def register():
             'password': generate_password_hash(password),
             'created_at': datetime.utcnow(),
             'total_sessions': 0,
-            'total_study_hours': 0
+            'total_study_hours': 0,
+            # Gamification fields
+            'xp': 0,
+            'level': 1,
+            'level_name': 'Beginner Scholar',
+            'streak_count': 0,
+            'last_study_date': None,
+            'longest_streak': 0,
+            'badges': [],
+            'rewards_unlocked': [],
+            'ai_tutor_uses': 0
         }
         
         result = users_collection.insert_one(user)
@@ -268,7 +667,7 @@ def add_session():
         }
         
         result = sessions_collection.insert_one(session)
-        
+
         # Update user stats
         users_collection.update_one(
             {'_id': ObjectId(user_id)},
@@ -279,10 +678,33 @@ def add_session():
                 }
             }
         )
-        
+
+        # Gamification: Award XP for study session (+10 per 25 min)
+        ensure_gamification_fields(user_id)
+        xp_earned = max(1, (duration // 25)) * 10
+        award_xp(user_id, xp_earned, f'Study session: {subject} ({duration} min)')
+        check_and_update_streak(user_id)
+        update_challenge_progress(user_id, 'study_time', duration)
+        update_challenge_progress(user_id, 'session_count', 1)
+        update_mission_progress(user_id, 'study_hours', duration)
+        # Track distinct subjects for weekly mission
+        from bson import ObjectId as OId
+        now = datetime.utcnow()
+        week_start_dt = now - timedelta(days=now.weekday())
+        week_start_dt = week_start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_subjects = sessions_collection.distinct('subject', {
+            'user_id': ObjectId(user_id),
+            'created_at': {'$gte': week_start_dt}
+        })
+        weekly_missions_collection.update_one(
+            {'user_id': ObjectId(user_id), 'week_start': (now - timedelta(days=now.weekday())).strftime('%Y-%m-%d'), 'completed': False},
+            {'$set': {'progress.subjects': len(week_subjects)}}
+        )
+
         return jsonify({
             'message': 'Session added successfully',
-            'session_id': str(result.inserted_id)
+            'session_id': str(result.inserted_id),
+            'xp_earned': xp_earned
         }), 201
     
     except Exception as e:
@@ -362,7 +784,13 @@ def dashboard():
             {'_id': ObjectId(user_id)},
             {'$set': {'total_sessions': actual_total_sessions, 'total_study_hours': actual_total_hours}}
         )
-        
+
+        # Gamification data for dashboard
+        ensure_gamification_fields(user_id)
+        user = users_collection.find_one({'_id': ObjectId(user_id)})  # re-fetch after update
+        xp = user.get('xp', 0)
+        level_info = calculate_level(xp)
+
         return jsonify({
             'message': 'Dashboard data retrieved',
             'user': {
@@ -376,6 +804,16 @@ def dashboard():
                 'average_score': round(avg_score, 2),
                 'total_sessions': len(sessions),
                 'recent_sessions_7_days': len(recent_sessions)
+            },
+            'gamification': {
+                'xp': xp,
+                'level': level_info['level'],
+                'level_name': level_info['level_name'],
+                'progress_pct': level_info['progress_pct'],
+                'xp_for_next': level_info['xp_for_next'],
+                'streak_count': user.get('streak_count', 0),
+                'badges_count': len(user.get('badges', [])),
+                'focus_score': calculate_focus_score(user_id)
             },
             'weak_areas': weak_areas,
             'recent_sessions': [
@@ -447,7 +885,7 @@ def progress():
         for subject, data in subject_data.items():
             avg_score = sum(data['scores']) / len(data['scores'])
             total_hours = sum(data['durations']) / 60
-            
+
             subject_progress.append({
                 'subject': subject,
                 'average_score': round(avg_score, 2),
@@ -456,12 +894,105 @@ def progress():
                 'latest_score': data['scores'][-1],
                 'trend': 'improving' if len(data['scores']) > 1 and data['scores'][-1] > data['scores'][0] else 'stable'
             })
-        
+
+        # Mock test history - search with both ObjectId and string user_id for compatibility
+        test_results = []
+        try:
+            test_results = list(test_results_collection.find(
+                {'$or': [{'user_id': ObjectId(user_id)}, {'user_id': user_id}]},
+                {'details': 0}
+            ).sort('created_at', -1))
+        except Exception as e1:
+            print(f"[DEBUG] test_results query with sort failed: {e1}")
+            try:
+                test_results = list(test_results_collection.find(
+                    {'$or': [{'user_id': ObjectId(user_id)}, {'user_id': user_id}]},
+                    {'details': 0}
+                ))
+            except Exception as e2:
+                print(f"[DEBUG] test_results query without sort also failed: {e2}")
+                test_results = []
+
+        print(f"[DEBUG] Progress: user_id={user_id}, type={type(user_id)}, sessions={len(sessions)}, test_results={len(test_results)}")
+
+        # Also try querying without $or to debug
+        if len(test_results) == 0:
+            try:
+                count_oid = test_results_collection.count_documents({'user_id': ObjectId(user_id)})
+                count_str = test_results_collection.count_documents({'user_id': user_id})
+                total_all = test_results_collection.count_documents({})
+                print(f"[DEBUG] test_results counts: ObjectId={count_oid}, string={count_str}, total_in_collection={total_all}")
+                # If there are results with ObjectId match, fetch them directly
+                if count_oid > 0:
+                    test_results = list(test_results_collection.find(
+                        {'user_id': ObjectId(user_id)},
+                        {'details': 0}
+                    ))
+                    print(f"[DEBUG] Fetched {len(test_results)} via direct ObjectId query")
+                elif count_str > 0:
+                    test_results = list(test_results_collection.find(
+                        {'user_id': user_id},
+                        {'details': 0}
+                    ))
+                    print(f"[DEBUG] Fetched {len(test_results)} via direct string query")
+            except Exception as e3:
+                print(f"[DEBUG] Fallback query also failed: {e3}")
+
+        mock_tests = []
+        mock_subject_stats = {}
+        for r in test_results:
+            try:
+                date_val = r.get('date', '')
+                if not date_val:
+                    ca = r.get('created_at')
+                    date_val = ca.isoformat() if ca else datetime.utcnow().isoformat()
+                mock_tests.append({
+                    'id': str(r['_id']),
+                    'subject': r.get('subject', 'Unknown'),
+                    'score': r.get('score', 0),
+                    'total': r.get('total', 0),
+                    'percentage': r.get('percentage', 0),
+                    'student_level': r.get('student_level', 'N/A'),
+                    'is_weak': r.get('is_weak', False),
+                    'date': str(date_val),
+                    'xp_earned': 30 + (r.get('score', 0) * 2)
+                })
+                subj = r.get('subject', 'Unknown')
+                if subj not in mock_subject_stats:
+                    mock_subject_stats[subj] = {'percentages': [], 'count': 0}
+                mock_subject_stats[subj]['percentages'].append(float(r.get('percentage', 0)))
+                mock_subject_stats[subj]['count'] += 1
+            except Exception as parse_err:
+                print(f"[DEBUG] Error parsing test result: {parse_err}")
+                continue
+
+        mock_summary = []
+        for subj, stats in mock_subject_stats.items():
+            try:
+                avg_pct = round(sum(stats['percentages']) / len(stats['percentages']), 1) if stats['percentages'] else 0
+                best_pct = round(max(stats['percentages']), 1) if stats['percentages'] else 0
+                latest_pct = round(stats['percentages'][0], 1) if stats['percentages'] else 0
+                mock_summary.append({
+                    'subject': subj,
+                    'tests_taken': stats['count'],
+                    'average_percentage': avg_pct,
+                    'best_percentage': best_pct,
+                    'latest_percentage': latest_pct,
+                    'level': determine_student_level(avg_pct),
+                    'trend': 'improving' if stats['count'] > 1 and stats['percentages'][0] > stats['percentages'][-1] else 'stable'
+                })
+            except Exception as sum_err:
+                print(f"[DEBUG] Error building summary for {subj}: {sum_err}")
+                continue
+
         return jsonify({
             'message': 'Progress analytics retrieved',
             'total_sessions': len(sessions),
             'subjects': sorted(subject_progress, key=lambda x: x['average_score']),
-            'overall_average': round(sum(s['average_score'] for s in subject_progress) / len(subject_progress), 2) if subject_progress else 0
+            'overall_average': round(sum(s['average_score'] for s in subject_progress) / len(subject_progress), 2) if subject_progress else 0,
+            'mock_tests': mock_tests[:20],
+            'mock_summary': sorted(mock_summary, key=lambda x: x['average_percentage']),
+            'total_mock_tests': len(test_results)
         }), 200
     
     except Exception as e:
@@ -645,9 +1176,6 @@ def serve_static(filename):
     return send_from_directory(root_path, filename)
 
 # ==================== TOPIC TEST MODULE ====================
-# New MongoDB collections for Topic Test & Student Level Analysis
-questions_collection = db['questions']
-test_results_collection = db['test_results']
 
 def determine_student_level(percentage):
     """Determine student learning level based on percentage"""
@@ -1011,6 +1539,13 @@ def submit_topic_test():
 
         result = test_results_collection.insert_one(test_result)
 
+        # Gamification: Award XP for mock test completion + correct answers
+        ensure_gamification_fields(user_id)
+        xp_earned = 30 + (correct * 2)
+        award_xp(user_id, xp_earned, f'Mock test: {subject} ({correct}/{total})')
+        update_challenge_progress(user_id, 'mcq_count', total)
+        update_mission_progress(user_id, 'mock_tests', 1)
+
         return jsonify({
             'message': 'Test submitted successfully',
             'result_id': str(result.inserted_id),
@@ -1021,6 +1556,7 @@ def submit_topic_test():
             'student_level': student_level,
             'is_weak': is_weak,
             'details': details,
+            'xp_earned': xp_earned,
             'level_info': {
                 'Expert': '90-100%',
                 'Advanced': '75-89%',
@@ -1223,71 +1759,65 @@ def generate_quiz():
         
         subject = data.get('subject', 'Database Systems')
         difficulty = data.get('difficulty', 'Medium')
-        
+
         if subject not in SYLLABUS:
             return jsonify({'error': f'Invalid subject. Valid subjects: {list(SYLLABUS.keys())}'}), 400
-        
-        if not GEMINI_API_KEY:
-            return jsonify({'error': 'AI service not available. Please set GEMINI_API_KEY'}), 503
-        
-        topics = ', '.join(SYLLABUS[subject][:3])
-        
-        prompt = f"""You are the "StudyMate Game Master" - an RPG-style AI tutor.
-Generate a gamified mock test for Computer Science students.
 
-SUBJECT: {subject}
-DIFFICULTY: {difficulty}
-TOPICS: {topics}
+        # Static quiz questions per subject (no API key needed)
+        quiz_banks = {
+            "Database Systems": [
+                {"id": 1, "question": "What is a primary key in a relational database?", "type": "mcq", "options": ["A) A key used to encrypt data", "B) A unique identifier for each record in a table", "C) A foreign key reference", "D) An index for faster queries"], "correct_answer": "B", "explanation": "A primary key uniquely identifies each row/record in a table.", "points": 50},
+                {"id": 2, "question": "Which normal form eliminates partial dependencies?", "type": "mcq", "options": ["A) 1NF", "B) 2NF", "C) 3NF", "D) BCNF"], "correct_answer": "B", "explanation": "Second Normal Form (2NF) removes partial dependencies on the primary key.", "points": 50},
+                {"id": 3, "question": "What does ACID stand for in database transactions?", "type": "mcq", "options": ["A) Atomicity, Consistency, Isolation, Durability", "B) Access, Control, Integrity, Data", "C) Automatic, Concurrent, Independent, Durable", "D) Atomic, Complete, Isolated, Dependent"], "correct_answer": "A", "explanation": "ACID ensures reliable database transactions.", "points": 50},
+                {"id": 4, "question": "Which SQL command is used to remove a table from the database?", "type": "mcq", "options": ["A) DELETE TABLE", "B) REMOVE TABLE", "C) DROP TABLE", "D) ERASE TABLE"], "correct_answer": "C", "explanation": "DROP TABLE permanently removes the table structure and data.", "points": 50},
+                {"id": 5, "question": "What is a foreign key?", "type": "mcq", "options": ["A) A key from another country's database", "B) A field that links to the primary key of another table", "C) A unique constraint on a column", "D) An auto-incrementing field"], "correct_answer": "B", "explanation": "A foreign key establishes a relationship between two tables.", "points": 50}
+            ],
+            "Data Structures": [
+                {"id": 1, "question": "What is the time complexity of binary search?", "type": "mcq", "options": ["A) O(n)", "B) O(n log n)", "C) O(log n)", "D) O(1)"], "correct_answer": "C", "explanation": "Binary search halves the search space each step, giving O(log n).", "points": 50},
+                {"id": 2, "question": "Which data structure uses LIFO (Last In First Out)?", "type": "mcq", "options": ["A) Queue", "B) Stack", "C) Linked List", "D) Tree"], "correct_answer": "B", "explanation": "A stack follows LIFO — the last element pushed is the first to be popped.", "points": 50},
+                {"id": 3, "question": "What is the worst-case time complexity of quicksort?", "type": "mcq", "options": ["A) O(n log n)", "B) O(n)", "C) O(n^2)", "D) O(log n)"], "correct_answer": "C", "explanation": "Quicksort degrades to O(n^2) when the pivot selection is poor.", "points": 50},
+                {"id": 4, "question": "Which traversal visits the root node first in a binary tree?", "type": "mcq", "options": ["A) Inorder", "B) Postorder", "C) Preorder", "D) Level order"], "correct_answer": "C", "explanation": "Preorder traversal visits Root → Left → Right.", "points": 50},
+                {"id": 5, "question": "What is the space complexity of a hash table?", "type": "mcq", "options": ["A) O(1)", "B) O(log n)", "C) O(n)", "D) O(n^2)"], "correct_answer": "C", "explanation": "A hash table stores n key-value pairs, requiring O(n) space.", "points": 50}
+            ],
+            "Computer Organization": [
+                {"id": 1, "question": "What is the main function of the ALU?", "type": "mcq", "options": ["A) Store data", "B) Perform arithmetic and logic operations", "C) Control I/O devices", "D) Manage memory"], "correct_answer": "B", "explanation": "The ALU (Arithmetic Logic Unit) performs calculations and logical operations.", "points": 50},
+                {"id": 2, "question": "Which memory is the fastest in the memory hierarchy?", "type": "mcq", "options": ["A) Main memory (RAM)", "B) Hard disk", "C) Cache memory", "D) Registers"], "correct_answer": "D", "explanation": "Registers are the fastest memory, located inside the CPU.", "points": 50},
+                {"id": 3, "question": "What does DMA stand for?", "type": "mcq", "options": ["A) Direct Memory Access", "B) Data Memory Allocation", "C) Dynamic Memory Architecture", "D) Dual Mode Access"], "correct_answer": "A", "explanation": "DMA allows devices to transfer data to memory without CPU intervention.", "points": 50},
+                {"id": 4, "question": "In pipelining, what is a hazard?", "type": "mcq", "options": ["A) A type of instruction", "B) A situation that prevents the next instruction from executing", "C) A memory error", "D) An I/O device"], "correct_answer": "B", "explanation": "Pipeline hazards (data, control, structural) stall instruction execution.", "points": 50},
+                {"id": 5, "question": "What is the purpose of an instruction register (IR)?", "type": "mcq", "options": ["A) Store the result of operations", "B) Hold the currently executing instruction", "C) Point to the next instruction", "D) Store memory addresses"], "correct_answer": "B", "explanation": "The IR holds the instruction currently being decoded and executed.", "points": 50}
+            ],
+            "Machine Learning": [
+                {"id": 1, "question": "What type of learning uses labeled data?", "type": "mcq", "options": ["A) Unsupervised Learning", "B) Supervised Learning", "C) Reinforcement Learning", "D) Transfer Learning"], "correct_answer": "B", "explanation": "Supervised learning trains on labeled input-output pairs.", "points": 50},
+                {"id": 2, "question": "Which algorithm is used for classification?", "type": "mcq", "options": ["A) Linear Regression", "B) K-Means", "C) Decision Tree", "D) PCA"], "correct_answer": "C", "explanation": "Decision Trees can classify data by learning decision rules from features.", "points": 50},
+                {"id": 3, "question": "What is overfitting?", "type": "mcq", "options": ["A) Model performs well on training and test data", "B) Model performs well on training but poorly on test data", "C) Model performs poorly on all data", "D) Model ignores all features"], "correct_answer": "B", "explanation": "Overfitting means the model memorizes training data but fails to generalize.", "points": 50},
+                {"id": 4, "question": "What does K-Means algorithm do?", "type": "mcq", "options": ["A) Classification", "B) Regression", "C) Clustering", "D) Dimensionality Reduction"], "correct_answer": "C", "explanation": "K-Means partitions data into K clusters based on similarity.", "points": 50},
+                {"id": 5, "question": "Which metric is used for regression problems?", "type": "mcq", "options": ["A) Accuracy", "B) F1 Score", "C) Mean Squared Error", "D) Precision"], "correct_answer": "C", "explanation": "MSE measures average squared difference between predicted and actual values.", "points": 50}
+            ]
+        }
 
-Create exactly 5 questions in this JSON format:
-{{
-  "world": "{subject}",
-  "boss_name": "[Creative name for this challenge]",
-  "level_difficulty": "{difficulty}",
-  "questions": [
-    {{
-      "id": 1,
-      "question": "[Question text]",
-      "type": "mcq",
-      "options": ["A) [option]", "B) [option]", "C) [option]", "D) [option]"],
-      "correct_answer": "A",
-      "explanation": "[Why this is correct]",
-      "points": 50
-    }}
-  ],
-  "total_questions": 5,
-  "player_hp": 100,
-  "xp_per_correct": 50,
-  "hp_penalty_per_wrong": 20
-}}
+        import random
+        questions = quiz_banks.get(subject, quiz_banks["Database Systems"])
+        random.shuffle(questions)
+        for i, q in enumerate(questions):
+            q['id'] = i + 1
 
-Make questions progressively harder. Include mix of conceptual and practical questions. Use gaming language (HP, XP, Boss, Level). Return ONLY valid JSON."""
+        boss_names = {
+            "Database Systems": "The SQL Sorcerer",
+            "Data Structures": "The Algorithm Dragon",
+            "Computer Organization": "The Binary Beast",
+            "Machine Learning": "The Neural Overlord"
+        }
 
-        response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
-
-        try:
-            quiz_data = json.loads(response.text)
-        except:
-            quiz_data = {
-                "world": subject,
-                "boss_name": f"The {subject} Guardian",
-                "level_difficulty": difficulty,
-                "questions": [
-                    {
-                        "id": 1,
-                        "question": "What is the primary key in a database?",
-                        "type": "mcq",
-                        "options": ["A) Foreign key", "B) Unique identifier for each record", "C) Index", "D) None of above"],
-                        "correct_answer": "B",
-                        "explanation": "A primary key uniquely identifies each record in a table.",
-                        "points": 50
-                    }
-                ],
-                "total_questions": 1,
-                "player_hp": 100,
-                "xp_per_correct": 50,
-                "hp_penalty_per_wrong": 20
-            }
+        quiz_data = {
+            "world": subject,
+            "boss_name": boss_names.get(subject, f"The {subject} Guardian"),
+            "level_difficulty": difficulty,
+            "questions": questions,
+            "total_questions": len(questions),
+            "player_hp": 100,
+            "xp_per_correct": 50,
+            "hp_penalty_per_wrong": 20
+        }
         
         return jsonify({
             'success': True,
@@ -1318,58 +1848,52 @@ def get_ai_recommendations():
         if not user_id:
             return jsonify({'error': 'Unauthorized'}), 401
         
-        if not GEMINI_API_KEY:
-            return jsonify({'error': 'AI service not available'}), 503
-        
         weak_areas = data.get('weak_areas', [])
         study_pattern = data.get('study_pattern', 'Evening study sessions')
-        
-        weak_areas_str = ', '.join(weak_areas) if weak_areas else 'General studying'
-        
-        prompt = f"""You are an AI study coach for a B.Tech Computer Science student using StudyMate.
 
-Weak Areas: {weak_areas_str}
-Study Pattern: {study_pattern}
+        # Static recommendations (no AI needed)
+        all_tips = [
+            {"category": "Motivation", "tip": "Start with the weakest subject first when your mind is fresh", "emoji": "💪"},
+            {"category": "Strategy", "tip": "Use the Pomodoro technique: 25 min study + 5 min break", "emoji": "⏱️"},
+            {"category": "Focus", "tip": "Turn off phone notifications during study sessions", "emoji": "📵"},
+            {"category": "Time Management", "tip": "Plan your study schedule the night before — wake up with a clear plan", "emoji": "📅"},
+            {"category": "Concept Mastery", "tip": "Use active recall: close the book and test yourself on what you just read", "emoji": "🧠"},
+            {"category": "Strategy", "tip": "Teach what you learn to someone else or a rubber duck to find gaps", "emoji": "🎓"},
+            {"category": "Focus", "tip": "Study in 90-minute blocks with 15-minute breaks for optimal focus", "emoji": "🎯"},
+            {"category": "Motivation", "tip": "Track your daily progress — seeing improvement is the best motivator", "emoji": "📈"},
+            {"category": "Concept Mastery", "tip": "Create mind maps to connect key concepts across topics", "emoji": "🗺️"},
+            {"category": "Time Management", "tip": "Use spaced repetition: review after 1 day, 3 days, 1 week, 1 month", "emoji": "🔄"},
+        ]
 
-Provide 5-7 personalized study recommendations as actionable tips. Format as JSON:
-{{
-  "recommendations": [
-    {{
-      "category": "[Motivation|Strategy|Focus|Time Management|Concept Mastery]",
-      "tip": "[Specific, actionable advice]",
-      "emoji": "[Relevant emoji]"
-    }}
-  ],
-  "study_schedule": [
-    {{
-      "subject": "[Subject name]",
-      "recommended_hours_per_week": [Number],
-      "priority": "[High|Medium|Low]",
-      "reason": "[Why this subject needs focus]"
-    }}
-  ],
-  "motivational_message": "[Encouraging message]"
-}}
+        import random
+        random.shuffle(all_tips)
+        selected_tips = all_tips[:6]
 
-Be specific, practical, and encouraging. Return ONLY valid JSON."""
+        study_schedule = []
+        if weak_areas:
+            priorities = ["High", "High", "Medium", "Medium", "Low"]
+            hours = [6, 5, 4, 3, 3]
+            for i, s in enumerate(weak_areas[:5]):
+                study_schedule.append({
+                    "subject": s,
+                    "recommended_hours_per_week": hours[i] if i < len(hours) else 3,
+                    "priority": priorities[i] if i < len(priorities) else "Low",
+                    "reason": f"Identified as a weak area — consistent practice will build confidence"
+                })
 
-        response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
+        motivational_messages = [
+            "Every small step forward is progress! You've got this! 🎯",
+            "Consistency beats intensity — 30 minutes daily beats 5 hours once a week! 💪",
+            "You're investing in your future — keep going, success is a marathon not a sprint! 🏃",
+            "The best time to study was yesterday, the next best time is right now! 🚀",
+            "Progress, not perfection. Every session makes you stronger! 🌟"
+        ]
 
-        try:
-            recommendations = json.loads(response.text)
-        except:
-            recommendations = {
-                "recommendations": [
-                    {"category": "Motivation", "tip": "Start with the weakest subject first when your mind is fresh", "emoji": "💪"},
-                    {"category": "Strategy", "tip": "Use the Pomodoro technique: 25 min study + 5 min break", "emoji": "⏱️"},
-                    {"category": "Focus", "tip": "Turn off phone notifications during study sessions", "emoji": "📵"}
-                ],
-                "study_schedule": [
-                    {"subject": s, "recommended_hours_per_week": 5, "priority": "High", "reason": "Weak area - needs focus"} 
-                    for s in weak_areas[:3]
-                ] if weak_areas else [],
-                "motivational_message": "Every small step forward is progress! You've got this! 🎯"
-            }
+        recommendations = {
+            "recommendations": selected_tips,
+            "study_schedule": study_schedule,
+            "motivational_message": random.choice(motivational_messages)
+        }
         
         return jsonify({
             'success': True,
@@ -1394,157 +1918,93 @@ def ai_tutor_help():
         question = data.get('question', 'Give me study tips')
         study_level = data.get('study_level', 'intermediate')
         mode = data.get('mode', 'question')  # 'question', 'subject_advice', 'topic'
-        
-        if not GEMINI_API_KEY:
-            return jsonify({'error': 'AI service not available'}), 503
-        
+
+        # Static tutor responses (no AI needed)
         if mode == 'subject_advice':
-            prompt = f"""You are a friendly, expert study tutor on StudyMate.
-
-SUBJECT: {subject}
-STUDENT LEVEL: {study_level}
-
-Provide personalized study advice for this subject in JSON:
-{{
-  "title": "Study Guide: {subject}",
-  "sections": [
-    {{
-      "heading": "Stress Management",
-      "icon": "fa-brain",
-      "tips": ["tip1", "tip2", "tip3"]
-    }},
-    {{
-      "heading": "Focus Techniques",
-      "icon": "fa-crosshairs",
-      "tips": ["tip1", "tip2", "tip3"]
-    }},
-    {{
-      "heading": "Study Strategy",
-      "icon": "fa-chess",
-      "tips": ["tip1", "tip2", "tip3"]
-    }},
-    {{
-      "heading": "Key Resources",
-      "icon": "fa-link",
-      "tips": ["resource1", "resource2", "resource3"]
-    }}
-  ],
-  "highlight": "A motivational one-line summary"
-}}
-
-Be specific to {subject}, practical, and encouraging. Return ONLY valid JSON."""
-
+            help_data = {
+                "title": f"Study Guide: {subject}",
+                "sections": [
+                    {"heading": "Stress Management", "icon": "fa-brain", "tips": [
+                        f"Break {subject} study into 25-minute focused sessions with 5-minute breaks",
+                        "Practice deep breathing before starting difficult topics",
+                        "Keep a progress journal to track what you've mastered",
+                        "Reward yourself after completing challenging study goals"
+                    ]},
+                    {"heading": "Focus Techniques", "icon": "fa-crosshairs", "tips": [
+                        "Remove phone and social media distractions while studying",
+                        f"Start with the most challenging {subject} topics when your energy is highest",
+                        "Use active recall — close the book and try to explain concepts aloud",
+                        "Study in a consistent, dedicated space free from distractions"
+                    ]},
+                    {"heading": "Study Strategy", "icon": "fa-chess", "tips": [
+                        "Use spaced repetition: review after 1 day, 3 days, 1 week",
+                        f"Create mind maps connecting key {subject} concepts",
+                        "Teach concepts to a friend or rubber duck to find gaps",
+                        "Practice with past exam papers and timed mock tests"
+                    ]},
+                    {"heading": "Key Resources", "icon": "fa-link", "tips": [
+                        f"Search for '{subject} lecture notes PDF' for concise summaries",
+                        f"Watch YouTube tutorials on difficult {subject} topics",
+                        "Use flashcard apps like Anki for memorization-heavy content",
+                        "Join study groups or online forums for peer discussion"
+                    ]}
+                ],
+                "highlight": f"Consistency beats intensity — 30 minutes daily of {subject} is better than 5 hours once a week!"
+            }
         elif mode == 'topic':
-            prompt = f"""You are a friendly study wellness coach on StudyMate.
-
-TOPIC: {question}
-STUDENT LEVEL: {study_level}
-
-Provide detailed, actionable guidance on this study wellness topic in JSON:
-{{
-  "title": "{question}",
-  "sections": [
-    {{
-      "heading": "Section heading",
-      "icon": "fa-icon-name",
-      "tips": ["tip1", "tip2", "tip3", "tip4"]
-    }}
-  ],
-  "highlight": "A key takeaway or motivational quote"
-}}
-
-Include 3-4 sections with 3-4 practical tips each. Use evidence-based techniques.
-Return ONLY valid JSON."""
-
+            help_data = {
+                "title": question,
+                "sections": [
+                    {"heading": "Quick Techniques", "icon": "fa-bolt", "tips": [
+                        "Practice the 4-7-8 breathing technique: inhale 4s, hold 7s, exhale 8s",
+                        "Use the Pomodoro Technique: 25 min work, 5 min rest",
+                        "Write down your worries before studying to clear your mind",
+                        "Start with a 2-minute easy task to build momentum"
+                    ]},
+                    {"heading": "Long-term Habits", "icon": "fa-calendar", "tips": [
+                        "Maintain a consistent sleep schedule of 7-8 hours",
+                        "Exercise for at least 20 minutes daily",
+                        "Practice mindfulness or meditation for 10 minutes each morning",
+                        "Set realistic daily goals and celebrate small wins"
+                    ]},
+                    {"heading": "Study Environment", "icon": "fa-home", "tips": [
+                        "Create a dedicated study space with good lighting",
+                        "Keep your desk organized — a clean space helps a clean mind",
+                        "Use background white noise or lo-fi music if it helps focus",
+                        "Study at the same time each day to build a routine"
+                    ]}
+                ],
+                "highlight": "Small daily habits compound into big results over time!"
+            }
         else:
-            prompt = f"""You are a friendly, expert tutor on StudyMate helping students learn.
-
-SUBJECT: {subject}
-STUDENT QUESTION: {question}
-STUDENT LEVEL: {study_level}
-
-Provide a helpful explanation in JSON:
-{{
-  "title": "Brief title for your answer",
-  "explanation": "Clear, detailed explanation in 2-3 paragraphs. Use markdown formatting.",
-  "key_points": ["Point 1", "Point 2", "Point 3"],
-  "example": "A practical example, code snippet, or worked problem",
-  "common_mistakes": ["Mistake 1", "Mistake 2"],
-  "practice_tip": "Suggestion for practicing this concept",
-  "difficulty": "Easy|Intermediate|Advanced"
-}}
-
-Be clear, engaging, use simple language. Return ONLY valid JSON."""
-
-        try:
-            response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
-            text = response.text.strip()
-            if text.startswith('```'):
-                text = text.split('\n', 1)[1] if '\n' in text else text[3:]
-            if text.endswith('```'):
-                text = text[:-3].strip()
-            if text.startswith('json'):
-                text = text[4:].strip()
-            help_data = json.loads(text)
-        except Exception as gemini_err:
-            # Fallback response when Gemini fails
-            if mode == 'subject_advice':
-                help_data = {
-                    "title": f"Study Guide: {subject}",
-                    "sections": [
-                        {"heading": "Stress Management", "icon": "fa-brain", "tips": [
-                            f"Break {subject} study into 25-minute focused sessions with 5-minute breaks",
-                            "Practice deep breathing before starting difficult topics",
-                            "Keep a progress journal to track what you've mastered"
-                        ]},
-                        {"heading": "Focus Techniques", "icon": "fa-crosshairs", "tips": [
-                            "Remove phone and social media distractions while studying",
-                            f"Start with the most challenging {subject} topics when your energy is highest",
-                            "Use active recall — close the book and try to explain concepts aloud"
-                        ]},
-                        {"heading": "Study Strategy", "icon": "fa-chess", "tips": [
-                            "Use spaced repetition: review after 1 day, 3 days, 1 week",
-                            f"Create mind maps connecting key {subject} concepts",
-                            "Teach concepts to a friend or rubber duck to find gaps"
-                        ]}
-                    ],
-                    "highlight": f"Consistency beats intensity — 30 minutes daily of {subject} is better than 5 hours once a week!"
-                }
-            elif mode == 'topic':
-                help_data = {
-                    "title": question,
-                    "sections": [
-                        {"heading": "Quick Techniques", "icon": "fa-bolt", "tips": [
-                            "Practice the 4-7-8 breathing technique: inhale 4s, hold 7s, exhale 8s",
-                            "Use the Pomodoro Technique: 25 min work, 5 min rest",
-                            "Write down your worries before studying to clear your mind"
-                        ]},
-                        {"heading": "Long-term Habits", "icon": "fa-calendar", "tips": [
-                            "Maintain a consistent sleep schedule of 7-8 hours",
-                            "Exercise for at least 20 minutes daily",
-                            "Practice mindfulness or meditation for 10 minutes each morning"
-                        ]}
-                    ],
-                    "highlight": "Small daily habits compound into big results over time!"
-                }
-            else:
-                help_data = {
-                    "title": question[:80],
-                    "explanation": f"I'd love to help you with this {subject} question! While the AI service is temporarily busy, here are some general tips: Break down complex problems into smaller parts, review fundamental concepts first, and practice with examples.",
-                    "key_points": [
-                        "Break the problem into smaller, manageable parts",
-                        "Review the fundamental concepts involved",
-                        "Practice with similar examples to build understanding"
-                    ],
-                    "example": "Try working through a simpler version of this problem first, then build up to the full complexity.",
-                    "common_mistakes": [
-                        "Skipping fundamentals and jumping to advanced topics",
-                        "Not practicing enough with hands-on examples"
-                    ],
-                    "practice_tip": f"Search for '{subject} {question} practice problems' online and work through 3-5 examples.",
-                    "difficulty": study_level
-                }
+            help_data = {
+                "title": question[:80],
+                "explanation": f"Here's some guidance on your {subject} question! Break down complex problems into smaller parts, review fundamental concepts first, and practice with examples. Understanding the 'why' behind concepts is more powerful than memorizing the 'what'.",
+                "key_points": [
+                    "Break the problem into smaller, manageable parts",
+                    "Review the fundamental concepts involved",
+                    "Practice with similar examples to build understanding",
+                    "Try to connect this concept to real-world applications"
+                ],
+                "example": "Try working through a simpler version of this problem first, then build up to the full complexity. Write out each step to identify where you get stuck.",
+                "common_mistakes": [
+                    "Skipping fundamentals and jumping to advanced topics",
+                    "Not practicing enough with hands-on examples",
+                    "Relying only on reading without active problem-solving"
+                ],
+                "practice_tip": f"Search for '{subject} {question} practice problems' online and work through 3-5 examples.",
+                "difficulty": study_level
+            }
         
+        # Gamification: Track AI tutor usage
+        from bson import ObjectId
+        ensure_gamification_fields(user_id)
+        users_collection.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$inc': {'ai_tutor_uses': 1}}
+        )
+        check_badges(user_id)
+
         return jsonify({
             'success': True,
             'data': help_data,
@@ -1559,7 +2019,7 @@ Be clear, engaging, use simple language. Return ONLY valid JSON."""
 
 @app.route('/api/mock-test/upload-syllabus', methods=['POST'])
 def upload_syllabus_and_generate():
-    """Upload a syllabus (PDF/DOCX/TXT file or pasted text) and generate 25 MCQs via Gemini"""
+    """Upload a syllabus (PDF/DOCX/TXT file or pasted text) and generate 10 MCQs via Gemini"""
     try:
         user_id = get_auth_user()
         if not user_id:
@@ -1627,7 +2087,7 @@ def upload_syllabus_and_generate():
         # Step 1: Ask Gemini to parse syllabus and generate questions
         prompt = f"""You are a Computer Science exam question generator and syllabus analyzer.
 
-TASK: Analyze the following syllabus content, identify the subject name, key units, and subtopics, then generate exactly 25 multiple-choice questions.
+TASK: Analyze the following syllabus content, identify the subject name, key units, and subtopics, then generate exactly 10 multiple-choice questions.
 
 SYLLABUS CONTENT:
 {syllabus_text}
@@ -1635,7 +2095,7 @@ SYLLABUS CONTENT:
 IMPORTANT RULES:
 - First identify the subject name from the syllabus
 - Identify 4-6 major units/chapters
-- Generate exactly 25 MCQ questions spread across all units
+- Generate exactly 10 MCQ questions spread across all units
 - Each question must have exactly 4 options with ONE correct answer
 - Tag each question with its unit and subtopic
 - Vary difficulty: mix easy, medium, and hard questions
@@ -1660,22 +2120,29 @@ Return ONLY valid JSON in this exact format:
 }}
 
 The "correct" field is the 0-based index (0, 1, 2, or 3).
-Generate exactly 25 questions. Return ONLY valid JSON, no markdown."""
+Generate exactly 10 questions. Return ONLY valid JSON, no markdown."""
 
         try:
-            response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
-
-            text = response.text.strip()
+            text = generate_gemini_text(prompt).strip()
+            # Strip markdown code fences
             if text.startswith('```'):
                 text = text.split('\n', 1)[1] if '\n' in text else text[3:]
             if text.endswith('```'):
                 text = text[:-3]
             text = text.strip()
+            if text.startswith('json'):
+                text = text[4:].strip()
 
             result = json.loads(text)
-            subject_name = result.get('subject', 'Custom Subject')
-            units = result.get('units', {})
-            questions = result.get('questions', [])
+            # Handle both dict and list responses from Gemini
+            if isinstance(result, list):
+                subject_name = 'Custom Subject'
+                units = {}
+                questions = result
+            else:
+                subject_name = result.get('subject', 'Custom Subject')
+                units = result.get('units', {})
+                questions = result.get('questions', [])
 
             # Validate questions
             valid_questions = []
@@ -1688,7 +2155,7 @@ Generate exactly 25 questions. Return ONLY valid JSON, no markdown."""
                     if 0 <= q['correct'] <= 3:
                         valid_questions.append(q)
 
-            if len(valid_questions) < 5:
+            if len(valid_questions) < 3:
                 return jsonify({'error': 'AI could not generate enough questions from this syllabus. Try providing more detailed content.'}), 422
 
             return jsonify({
@@ -1702,7 +2169,10 @@ Generate exactly 25 questions. Return ONLY valid JSON, no markdown."""
         except json.JSONDecodeError:
             return jsonify({'error': 'AI returned invalid response. Please try again.'}), 500
         except Exception as e:
-            return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
+            err_str = str(e)
+            if '429' in err_str or 'quota' in err_str.lower():
+                return jsonify({'error': 'AI service is temporarily busy. Please wait a moment and try again.'}), 429
+            return jsonify({'error': f'Question generation failed. Please try again.'}), 500
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1786,18 +2256,22 @@ The "correct" field is the 0-based index of the correct option (0, 1, 2, or 3).
 Generate exactly 25 questions. Return ONLY valid JSON, no markdown."""
 
         try:
-            response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
-
             # Clean response text
-            text = response.text.strip()
+            text = generate_gemini_text(prompt).strip()
             if text.startswith('```'):
                 text = text.split('\n', 1)[1] if '\n' in text else text[3:]
             if text.endswith('```'):
                 text = text[:-3]
             text = text.strip()
+            if text.startswith('json'):
+                text = text[4:].strip()
 
             result = json.loads(text)
-            questions = result.get('questions', [])
+            # Handle both dict and list responses from Gemini
+            if isinstance(result, list):
+                questions = result
+            else:
+                questions = result.get('questions', [])
 
             # Validate questions
             valid_questions = []
@@ -2017,6 +2491,13 @@ def submit_mock_test():
         }
         result = test_results_collection.insert_one(test_result)
 
+        # Gamification: Award XP for detailed mock test
+        ensure_gamification_fields(user_id)
+        xp_earned = 30 + (correct * 2)
+        award_xp(user_id, xp_earned, f'Detailed test: {subject} ({correct}/{total})')
+        update_challenge_progress(user_id, 'mcq_count', total)
+        update_mission_progress(user_id, 'mock_tests', 1)
+
         return jsonify({
             'success': True,
             'result_id': str(result.inserted_id),
@@ -2028,6 +2509,7 @@ def submit_mock_test():
             'per_unit_breakdown': per_unit_breakdown,
             'roadmap': roadmap,
             'time_taken': time_taken,
+            'xp_earned': xp_earned,
             'level_info': {
                 'Expert': '90-100%',
                 'Advanced': '75-89%',
@@ -2084,14 +2566,15 @@ Provide personalized study tips for each weak unit. Return ONLY valid JSON:
 Be specific, practical. Return ONLY valid JSON, no markdown."""
 
         try:
-            response = genai.GenerativeModel('gemini-2.0-flash').generate_content(prompt)
-
-            text = response.text.strip()
+            text = generate_gemini_text(prompt).strip()
             if text.startswith('```'):
                 text = text.split('\n', 1)[1] if '\n' in text else text[3:]
             if text.endswith('```'):
                 text = text[:-3]
-            tips_data = json.loads(text.strip())
+            text = text.strip()
+            if text.startswith('json'):
+                text = text[4:].strip()
+            tips_data = json.loads(text)
             return jsonify({'success': True, **tips_data}), 200
         except Exception:
             pass
@@ -2304,6 +2787,183 @@ def delete_note(note_id):
             return jsonify({'error': 'Note not found'}), 404
 
         return jsonify({'message': 'Note deleted successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== GAMIFICATION ENDPOINTS ====================
+
+@app.route('/gamification/profile', methods=['GET'])
+def gamification_profile():
+    """Get full gamification profile"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        from bson import ObjectId
+        ensure_gamification_fields(user_id)
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        xp = user.get('xp', 0)
+        level_info = calculate_level(xp)
+        focus_score = calculate_focus_score(user_id)
+
+        # Build badge details
+        earned_badges = user.get('badges', [])
+        badges = []
+        for badge_id, badge_def in BADGE_DEFINITIONS.items():
+            badges.append({
+                'id': badge_id,
+                'name': badge_def['name'],
+                'icon': badge_def['icon'],
+                'desc': badge_def['desc'],
+                'color': badge_def['color'],
+                'earned': badge_id in earned_badges
+            })
+
+        # Build rewards
+        user_level = level_info['level']
+        unlocked_rewards = user.get('rewards_unlocked', [])
+        rewards = []
+        for r in REWARDS:
+            rewards.append({
+                **r,
+                'unlocked': user_level >= r['level'],
+                'claimed': r['id'] in unlocked_rewards
+            })
+
+        return jsonify({
+            'xp': xp,
+            'level': level_info['level'],
+            'level_name': level_info['level_name'],
+            'xp_for_next': level_info['xp_for_next'],
+            'progress_pct': level_info['progress_pct'],
+            'xp_progress': level_info['xp_progress'],
+            'xp_needed': level_info['xp_needed'],
+            'streak_count': user.get('streak_count', 0),
+            'longest_streak': user.get('longest_streak', 0),
+            'focus_score': focus_score,
+            'badges': badges,
+            'rewards': rewards,
+            'total_sessions': user.get('total_sessions', 0),
+            'total_study_hours': round(user.get('total_study_hours', 0), 1),
+            'name': user.get('name', 'Student')
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gamification/leaderboard', methods=['GET'])
+def gamification_leaderboard():
+    """Get top 20 users by XP"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        from bson import ObjectId
+
+        top_users = list(users_collection.find(
+            {'xp': {'$exists': True}},
+            {'name': 1, 'xp': 1, 'level': 1, 'level_name': 1}
+        ).sort('xp', -1).limit(20))
+
+        leaderboard = []
+        for i, u in enumerate(top_users):
+            leaderboard.append({
+                'rank': i + 1,
+                'name': u.get('name', 'Student'),
+                'xp': u.get('xp', 0),
+                'level': u.get('level', 1),
+                'level_name': u.get('level_name', 'Beginner Scholar'),
+                'is_current_user': str(u['_id']) == user_id
+            })
+
+        return jsonify({'leaderboard': leaderboard}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gamification/daily-challenge', methods=['GET'])
+def get_daily_challenge():
+    """Get today's daily challenge"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        challenge = get_or_create_daily_challenge(user_id)
+        return jsonify({'challenge': challenge}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gamification/weekly-mission', methods=['GET'])
+def get_weekly_mission():
+    """Get this week's mission"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        mission = get_or_create_weekly_mission(user_id)
+        return jsonify({'mission': mission}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gamification/activity-log', methods=['GET'])
+def gamification_activity_log():
+    """Get recent XP activity log"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        from bson import ObjectId
+
+        logs = list(gamification_logs_collection.find(
+            {'user_id': ObjectId(user_id)}
+        ).sort('timestamp', -1).limit(20))
+
+        activity = []
+        for log in logs:
+            activity.append({
+                'points': log['points'],
+                'activity': log['activity'],
+                'new_total': log['new_total'],
+                'timestamp': log['timestamp'].isoformat()
+            })
+
+        return jsonify({'activity': activity}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/gamification/claim-reward', methods=['POST'])
+def claim_reward():
+    """Claim a level-based reward"""
+    try:
+        user_id = get_auth_user()
+        if not user_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        from bson import ObjectId
+
+        data = request.json
+        reward_id = data.get('reward_id')
+        if not reward_id:
+            return jsonify({'error': 'Reward ID required'}), 400
+
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        reward = next((r for r in REWARDS if r['id'] == reward_id), None)
+        if not reward:
+            return jsonify({'error': 'Invalid reward'}), 404
+
+        user_level = calculate_level(user.get('xp', 0))['level']
+        if user_level < reward['level']:
+            return jsonify({'error': f'You need level {reward["level"]} to claim this reward'}), 403
+
+        users_collection.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$addToSet': {'rewards_unlocked': reward_id}}
+        )
+        return jsonify({'message': f'Reward "{reward["name"]}" claimed!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

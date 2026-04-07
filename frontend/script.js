@@ -252,6 +252,8 @@ function switchPage(pageName) {
 
     else if (pageName === 'settings') initSettingsPage();
 
+    else if (pageName === 'gamification') loadGamificationPage();
+
     else if (pageName === 'guide') { /* static page, no init needed */ }
 
     else if (pageName === 'aboutus') { /* static page, no init needed */ }
@@ -683,6 +685,11 @@ async function loadDashboard() {
             displayTrendChart(dashboardData.recent_sessions);
 
             showAlert('Dashboard loaded!', 'success');
+
+            // Load gamification dashboard widget
+            if (dashboardData.gamification) {
+                renderDashboardGamificationWidgets(dashboardData.gamification);
+            }
 
 
 
@@ -1856,6 +1863,8 @@ async function handleAddSession(e) {
 
             showAlert('Session added! 🎉', 'success');
 
+            if (data.xp_earned) showXPNotification(data.xp_earned, 'Study session completed');
+
             document.getElementById('addSessionForm').reset();
 
             const modal = bootstrap.Modal.getInstance(document.getElementById('addSessionModal'));
@@ -2066,13 +2075,28 @@ function renderTipsPage() {
 
 // ==================== PAGE: Progress ====================
 
-function renderProgressPage() {
+async function renderProgressPage() {
 
     const container = document.getElementById('progressPageContainer');
 
-    if (!cachedProgress || !cachedDashboard) {
+    // Always fetch fresh progress data to ensure mock test results are included
+    try {
+        container.innerHTML = '<p class="empty-text">Loading progress data...</p>';
+        const freshProgress = await fetchWithAuth(`${API_BASE_URL}/progress`);
+        console.log('Progress API response:', freshProgress);
+        console.log('Mock tests in response:', freshProgress?.mock_tests?.length, freshProgress?.total_mock_tests);
+        if (freshProgress && !freshProgress.error) {
+            cachedProgress = freshProgress;
+        } else if (freshProgress && freshProgress.error) {
+            console.error('Progress API returned error:', freshProgress.error);
+        }
+    } catch (err) {
+        console.error('Failed to fetch progress:', err);
+    }
 
-        container.innerHTML = '<p class="empty-text">Loading...</p>';
+    if (!cachedProgress) {
+
+        container.innerHTML = '<p class="empty-text">Unable to load progress data.</p>';
 
         return;
 
@@ -2082,11 +2106,19 @@ function renderProgressPage() {
 
     const subjects = progress.subjects || [];
 
+    const mockTests = progress.mock_tests || [];
+
+    const mockSummary = progress.mock_summary || [];
+
+    const totalMockTests = progress.total_mock_tests || 0;
+
+    console.log('Mock tests:', mockTests.length, 'Mock summary:', mockSummary.length, 'Total:', totalMockTests);
 
 
-    if (subjects.length === 0) {
 
-        container.innerHTML = '<div class="empty-state-box"><i class="fas fa-chart-line"></i><p>No progress data yet. Add study sessions to track your progress!</p></div>';
+    if (subjects.length === 0 && mockTests.length === 0) {
+
+        container.innerHTML = '<div class="empty-state-box"><i class="fas fa-chart-line"></i><p>No progress data yet. Add study sessions or take a mock test to track your progress!</p></div>';
 
         return;
 
@@ -2106,37 +2138,100 @@ function renderProgressPage() {
 
     html += `<div class="progress-summary-card"><div class="psc-icon c4"><i class="fas fa-clock"></i></div><div><div class="psc-value">${totalHours.toFixed(1)}h</div><div class="psc-label">Total Study Time</div></div></div>`;
 
-    html += '</div>';
-
-
-
-    html += '<div class="section-label" style="margin-top:1.5rem">Subject Progress</div>';
-
-    html += '<div class="progress-cards-grid">';
-
-    subjects.forEach(s => {
-
-        const barColor = s.average_score >= 70 ? '#22c55e' : (s.average_score >= 50 ? '#f59e0b' : '#ef4444');
-
-        const trendIcon = s.trend === 'improving' ? 'fa-arrow-up' : 'fa-minus';
-
-        const trendColor = s.trend === 'improving' ? '#22c55e' : '#94a3b8';
-
-        html += `<div class="progress-subject-card">
-
-            <div class="ps-header"><h6>${s.subject}</h6><span class="ps-trend" style="color:${trendColor}"><i class="fas ${trendIcon}"></i> ${s.trend}</span></div>
-
-            <div class="ps-score">${s.average_score}%</div>
-
-            <div class="analysis-bar"><div class="analysis-bar-fill" style="width:${s.average_score}%;background:${barColor}"></div></div>
-
-            <div class="ps-details"><span><i class="fas fa-book-open"></i> ${s.sessions} sessions</span><span><i class="fas fa-clock"></i> ${s.total_hours}h studied</span><span><i class="fas fa-star"></i> Latest: ${s.latest_score}%</span></div>
-
-        </div>`;
-
-    });
+    html += `<div class="progress-summary-card"><div class="psc-icon c5"><i class="fas fa-file-alt"></i></div><div><div class="psc-value">${totalMockTests}</div><div class="psc-label">Mock Tests Taken</div></div></div>`;
 
     html += '</div>';
+
+
+
+    // Subject Progress
+    if (subjects.length > 0) {
+        html += '<div class="section-label" style="margin-top:1.5rem">Subject Progress</div>';
+
+        html += '<div class="progress-cards-grid">';
+
+        subjects.forEach(s => {
+
+            const barColor = s.average_score >= 70 ? '#22c55e' : (s.average_score >= 50 ? '#f59e0b' : '#ef4444');
+
+            const trendIcon = s.trend === 'improving' ? 'fa-arrow-up' : 'fa-minus';
+
+            const trendColor = s.trend === 'improving' ? '#22c55e' : '#94a3b8';
+
+            html += `<div class="progress-subject-card">
+
+                <div class="ps-header"><h6>${s.subject}</h6><span class="ps-trend" style="color:${trendColor}"><i class="fas ${trendIcon}"></i> ${s.trend}</span></div>
+
+                <div class="ps-score">${s.average_score}%</div>
+
+                <div class="analysis-bar"><div class="analysis-bar-fill" style="width:${s.average_score}%;background:${barColor}"></div></div>
+
+                <div class="ps-details"><span><i class="fas fa-book-open"></i> ${s.sessions} sessions</span><span><i class="fas fa-clock"></i> ${s.total_hours}h studied</span><span><i class="fas fa-star"></i> Latest: ${s.latest_score}%</span></div>
+
+            </div>`;
+
+        });
+
+        html += '</div>';
+    }
+
+    // Mock Test Performance Summary
+    if (mockSummary.length > 0) {
+        html += '<div class="section-label" style="margin-top:1.5rem"><i class="fas fa-file-alt me-2"></i>Mock Test Performance</div>';
+        html += '<div class="progress-cards-grid">';
+        mockSummary.forEach(m => {
+            const barColor = m.average_percentage >= 75 ? '#22c55e' : (m.average_percentage >= 50 ? '#f59e0b' : '#ef4444');
+            const trendIcon = m.trend === 'improving' ? 'fa-arrow-up' : 'fa-minus';
+            const trendColor = m.trend === 'improving' ? '#22c55e' : '#94a3b8';
+            const levelClass = m.level ? m.level.toLowerCase() : 'beginner';
+            html += `<div class="progress-subject-card prog-mock-card">
+                <div class="ps-header">
+                    <h6>${m.subject}</h6>
+                    <span class="prog-mock-level prog-mock-level-${levelClass}">${m.level}</span>
+                </div>
+                <div class="ps-score">${m.average_percentage}%</div>
+                <div class="analysis-bar"><div class="analysis-bar-fill" style="width:${m.average_percentage}%;background:${barColor}"></div></div>
+                <div class="ps-details">
+                    <span><i class="fas fa-file-alt"></i> ${m.tests_taken} tests</span>
+                    <span><i class="fas fa-trophy"></i> Best: ${m.best_percentage}%</span>
+                    <span class="ps-trend" style="color:${trendColor}"><i class="fas ${trendIcon}"></i> ${m.trend}</span>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    // Mock Test History Table
+    if (mockTests.length > 0) {
+        html += '<div class="section-label" style="margin-top:1.5rem"><i class="fas fa-history me-2"></i>Mock Test History</div>';
+        html += `<div class="prog-mock-history-card">
+            <table class="prog-mock-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Score</th>
+                        <th>Percentage</th>
+                        <th>Level</th>
+                        <th>XP Earned</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        mockTests.forEach(t => {
+            const levelClass = t.student_level ? t.student_level.toLowerCase() : 'beginner';
+            const pctColor = t.percentage >= 75 ? '#22c55e' : (t.percentage >= 50 ? '#f59e0b' : '#ef4444');
+            const dateStr = new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            html += `<tr>
+                <td class="prog-mock-subject">${t.subject}</td>
+                <td><strong>${t.score}</strong> / ${t.total}</td>
+                <td><span class="prog-mock-pct" style="color:${pctColor}">${t.percentage}%</span></td>
+                <td><span class="prog-mock-level prog-mock-level-${levelClass}">${t.student_level}</span></td>
+                <td><span class="prog-mock-xp">+${t.xp_earned} XP</span></td>
+                <td class="prog-mock-date">${dateStr}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+    }
 
     container.innerHTML = html;
 
@@ -7587,7 +7682,12 @@ async function submitMockTest() {
 
 function renderMockTestResults(data, timeTaken) {
 
-    const { percentage, student_level, score, total, per_unit_breakdown, roadmap } = data;
+    const { percentage, student_level, score, total, per_unit_breakdown, roadmap, xp_earned } = data;
+
+    // Show XP notification if earned
+    if (xp_earned) {
+        showXPNotification(xp_earned, `Mock Test: ${data.subject}`);
+    }
 
 
 
@@ -7688,6 +7788,12 @@ function renderMockTestResults(data, timeTaken) {
                 <div class="mt-stat-label">Time Taken</div>
 
             </div>
+
+            ${xp_earned ? `<div class="mt-stat-item mt-stat-xp">
+                <div class="mt-stat-icon">⚡</div>
+                <div class="mt-stat-value" id="mtStatXP">+${xp_earned}</div>
+                <div class="mt-stat-label">XP Earned</div>
+            </div>` : ''}
 
         </div>
 
@@ -8053,3 +8159,252 @@ if (document.getElementById('page-mocktest')) {
 
 }
 
+// ==================== GAMIFICATION MODULE ====================
+
+function renderDashboardGamificationWidgets(gam) {
+    const widget = document.getElementById('gamDashWidget');
+    if (!widget) return;
+    widget.style.display = 'block';
+
+    const levelThresholds = [0, 100, 250, 500, 1000, 2000, 3500];
+    const currentLevelXP = levelThresholds[gam.level - 1] || 0;
+    const nextLevelXP = levelThresholds[gam.level] || levelThresholds[levelThresholds.length - 1];
+
+    document.getElementById('gamWidgetLevel').textContent = `Lv ${gam.level}`;
+    document.getElementById('gamWidgetLevelName').textContent = gam.level_name;
+    document.getElementById('gamWidgetXPText').textContent = `${gam.xp} / ${nextLevelXP} XP`;
+    document.getElementById('gamWidgetXPBar').style.width = gam.progress_pct + '%';
+    document.getElementById('gamWidgetStreak').textContent = gam.streak_count;
+    document.getElementById('gamWidgetFocusVal').textContent = gam.focus_score + '%';
+    document.getElementById('gamWidgetFocusRing').setAttribute('stroke-dasharray', `${gam.focus_score}, 100`);
+    document.getElementById('gamWidgetBadges').textContent = gam.badges_count;
+}
+
+async function loadGamificationPage() {
+    try {
+        const [profileRes, challengeRes, missionRes, leaderboardRes, activityRes] = await Promise.all([
+            fetchWithAuth(`${API_BASE_URL}/gamification/profile`),
+            fetchWithAuth(`${API_BASE_URL}/gamification/daily-challenge`),
+            fetchWithAuth(`${API_BASE_URL}/gamification/weekly-mission`),
+            fetchWithAuth(`${API_BASE_URL}/gamification/leaderboard`),
+            fetchWithAuth(`${API_BASE_URL}/gamification/activity-log`)
+        ]);
+
+        if (profileRes) renderGamificationProfile(profileRes);
+        if (challengeRes && challengeRes.challenge) renderDailyChallenge(challengeRes.challenge);
+        if (missionRes && missionRes.mission) renderWeeklyMission(missionRes.mission);
+        if (leaderboardRes && leaderboardRes.leaderboard) renderLeaderboard(leaderboardRes.leaderboard);
+        if (activityRes && activityRes.activity) renderActivityLog(activityRes.activity);
+        if (profileRes) {
+            renderBadges(profileRes.badges);
+            renderRewards(profileRes.rewards, profileRes.level);
+        }
+    } catch (err) {
+        console.error('Gamification load error:', err);
+    }
+}
+
+function renderGamificationProfile(data) {
+    const avatar = document.getElementById('gamAvatar');
+    if (avatar) avatar.textContent = (data.name || 'S').charAt(0).toUpperCase();
+
+    const name = document.getElementById('gamProfileName');
+    if (name) name.textContent = data.name || 'Student';
+    const pill = document.getElementById('gamLevelPill');
+    if (pill) pill.textContent = `Level ${data.level} - ${data.level_name}`;
+
+    document.getElementById('gamTotalXP').textContent = data.xp;
+    document.getElementById('gamTotalSessions').textContent = data.total_sessions;
+    document.getElementById('gamTotalHours').textContent = data.total_study_hours;
+
+    const levelThresholds = [0, 100, 250, 500, 1000, 2000, 3500];
+    const nextLevelXP = levelThresholds[data.level] || levelThresholds[levelThresholds.length - 1];
+
+    document.getElementById('gamXPLevelLabel').textContent = `Level ${data.level}`;
+    document.getElementById('gamXPNextLabel').textContent = data.level < 7 ? `Level ${data.level + 1}` : 'MAX';
+    document.getElementById('gamXPAmount').textContent = `${data.xp} / ${nextLevelXP} XP`;
+    document.getElementById('gamXPBarLarge').style.width = data.progress_pct + '%';
+    document.getElementById('gamXPRemaining').textContent = data.xp_for_next > 0
+        ? `${data.xp_for_next} XP to next level`
+        : 'Maximum level reached!';
+
+    document.getElementById('gamStreakCount').textContent = data.streak_count;
+    document.getElementById('gamLongestStreak').textContent = data.longest_streak;
+
+    document.getElementById('gamFocusValBig').textContent = data.focus_score + '%';
+    document.getElementById('gamFocusRingBig').setAttribute('stroke-dasharray', `${data.focus_score}, 100`);
+}
+
+function renderDailyChallenge(challenge) {
+    const container = document.getElementById('gamDailyTasks');
+    const status = document.getElementById('gamDailyStatus');
+    if (!container) return;
+
+    if (challenge.completed) {
+        status.innerHTML = '<span class="gam-completed-badge"><i class="fas fa-check-circle"></i> Completed!</span>';
+    } else {
+        status.innerHTML = '';
+    }
+
+    container.innerHTML = challenge.tasks.map(task => {
+        const progress = challenge.progress[task.type] || 0;
+        const pct = Math.min(100, Math.round((progress / task.target) * 100));
+        const done = progress >= task.target;
+        return `
+            <div class="gam-task-item ${done ? 'gam-task-done' : ''}">
+                <div class="gam-task-check">${done ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}</div>
+                <div class="gam-task-info">
+                    <span class="gam-task-desc">${task.desc}</span>
+                    <div class="gam-task-bar"><div class="gam-task-bar-fill" style="width:${pct}%"></div></div>
+                </div>
+                <span class="gam-task-pct">${pct}%</span>
+            </div>`;
+    }).join('');
+}
+
+function renderWeeklyMission(mission) {
+    const container = document.getElementById('gamWeeklyTasks');
+    const status = document.getElementById('gamWeeklyStatus');
+    if (!container) return;
+
+    if (mission.completed) {
+        status.innerHTML = '<span class="gam-completed-badge"><i class="fas fa-check-circle"></i> Completed!</span>';
+    } else {
+        status.innerHTML = '';
+    }
+
+    container.innerHTML = mission.tasks.map(task => {
+        const progress = mission.progress[task.type] || 0;
+        const pct = Math.min(100, Math.round((progress / task.target) * 100));
+        const done = progress >= task.target;
+        return `
+            <div class="gam-task-item ${done ? 'gam-task-done' : ''}">
+                <div class="gam-task-check">${done ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}</div>
+                <div class="gam-task-info">
+                    <span class="gam-task-desc">${task.desc}</span>
+                    <div class="gam-task-bar"><div class="gam-task-bar-fill gam-mission-bar-fill" style="width:${pct}%"></div></div>
+                </div>
+                <span class="gam-task-pct">${pct}%</span>
+            </div>`;
+    }).join('');
+}
+
+function renderBadges(badges) {
+    const grid = document.getElementById('gamBadgesGrid');
+    if (!grid || !badges) return;
+
+    grid.innerHTML = badges.map(badge => `
+        <div class="gam-badge-card ${badge.earned ? 'gam-badge-earned' : 'gam-badge-locked'}">
+            <div class="gam-badge-icon" style="${badge.earned ? 'background:' + badge.color : ''}">
+                <i class="fas ${badge.icon}"></i>
+            </div>
+            <div class="gam-badge-name">${badge.name}</div>
+            <div class="gam-badge-desc">${badge.desc}</div>
+            ${!badge.earned ? '<div class="gam-badge-lock"><i class="fas fa-lock"></i></div>' : ''}
+        </div>
+    `).join('');
+}
+
+function renderLeaderboard(leaderboard) {
+    const body = document.getElementById('gamLeaderboard');
+    if (!body || !leaderboard.length) {
+        if (body) body.innerHTML = '<p class="empty-text">No leaderboard data yet.</p>';
+        return;
+    }
+
+    body.innerHTML = `
+        <table class="gam-lb-table">
+            <thead>
+                <tr><th>Rank</th><th>Student</th><th>Level</th><th>XP</th></tr>
+            </thead>
+            <tbody>
+                ${leaderboard.map(u => `
+                    <tr class="${u.is_current_user ? 'gam-lb-current' : ''}">
+                        <td class="gam-lb-rank">
+                            ${u.rank <= 3 ? ['<span class="gam-lb-medal gam-gold">1</span>', '<span class="gam-lb-medal gam-silver">2</span>', '<span class="gam-lb-medal gam-bronze">3</span>'][u.rank - 1] : u.rank}
+                        </td>
+                        <td class="gam-lb-name">${u.name}${u.is_current_user ? ' <small>(You)</small>' : ''}</td>
+                        <td><span class="gam-lb-level">Lv ${u.level}</span></td>
+                        <td class="gam-lb-xp">${u.xp} XP</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>`;
+}
+
+function renderActivityLog(activity) {
+    const list = document.getElementById('gamActivityLog');
+    if (!list || !activity.length) {
+        if (list) list.innerHTML = '<p class="empty-text">No activity yet. Start earning XP!</p>';
+        return;
+    }
+
+    list.innerHTML = activity.slice(0, 15).map(a => {
+        const date = new Date(a.timestamp);
+        const timeStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                       date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return `
+            <div class="gam-activity-item">
+                <div class="gam-activity-icon"><i class="fas fa-bolt"></i></div>
+                <div class="gam-activity-info">
+                    <span class="gam-activity-text">${a.activity}</span>
+                    <span class="gam-activity-time">${timeStr}</span>
+                </div>
+                <span class="gam-activity-points">+${a.points} XP</span>
+            </div>`;
+    }).join('');
+}
+
+function renderRewards(rewards, userLevel) {
+    const grid = document.getElementById('gamRewardsGrid');
+    if (!grid || !rewards) return;
+
+    grid.innerHTML = rewards.map(r => `
+        <div class="gam-reward-card ${r.unlocked ? 'gam-reward-unlocked' : 'gam-reward-locked'}">
+            <div class="gam-reward-icon"><i class="fas ${r.icon}"></i></div>
+            <div class="gam-reward-name">${r.name}</div>
+            <div class="gam-reward-desc">${r.desc}</div>
+            <div class="gam-reward-level">Level ${r.level}</div>
+            ${r.unlocked && !r.claimed
+                ? `<button class="gam-reward-claim-btn" onclick="claimReward('${r.id}')">Claim</button>`
+                : r.claimed
+                    ? '<span class="gam-reward-claimed"><i class="fas fa-check"></i> Claimed</span>'
+                    : '<div class="gam-reward-lock-overlay"><i class="fas fa-lock"></i></div>'}
+        </div>
+    `).join('');
+}
+
+async function claimReward(rewardId) {
+    try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/gamification/claim-reward`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reward_id: rewardId })
+        });
+        if (res && res.message) {
+            showAlert(res.message, 'success');
+            loadGamificationPage();
+        }
+    } catch (err) {
+        showAlert('Failed to claim reward', 'danger');
+    }
+}
+
+function showXPNotification(points, activity) {
+    const container = document.getElementById('xpNotificationContainer');
+    if (!container) return;
+    const notif = document.createElement('div');
+    notif.className = 'xp-notif';
+    notif.innerHTML = `<span class="xp-notif-points">+${points} XP</span><span class="xp-notif-text">${activity}</span>`;
+    container.appendChild(notif);
+    setTimeout(() => notif.classList.add('xp-notif-show'), 10);
+    setTimeout(() => {
+        notif.classList.remove('xp-notif-show');
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}
+
+// Add gamification page to search index
+if (typeof SEARCH_PAGES !== 'undefined') {
+    SEARCH_PAGES.push({ page: 'gamification', label: 'Gamification', keywords: 'xp points level badges streak leaderboard rewards challenges missions' });
+}
